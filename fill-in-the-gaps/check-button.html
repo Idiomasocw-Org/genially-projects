@@ -1,0 +1,234 @@
+<script>
+	//-----VARIABLES UTILISATEUR----	
+	var solution = ["facilitating"]; //entrez vos réponses attendues
+	var ordre = 1; // 0 ou 1 - tapez 1 si l'ordre des réponses est important (si 0 : les champs réponses sont équivalents  )
+	var espace = 1; //0 ou 1 - tapez 1 si les réponses doivent être nettoyées des espaces de début et fin 
+	var casse = 0; // 0 ou 1 -  tapez 1 si la casse (majuscules/minuscules) doit être respectée
+	var correct=1; // 0 ou 1 - tapez 1 pour visualiser les erreurs (couleurs rouge / vert)
+	var tentative=0; // 0 ou 1 - tapez 1 pour afficher le nombre des tentatives
+	var maxtentative=0; // 0 pour illimité - tapez le nombre des tentatives maximales autorisées (tentative doit être à 1)
+	var unefois=0; //0 ou 1 - tapez 1 pour empêcher de recommencer lors d'une session (le couise sera bloqué) (tentative doit être à 1)
+			//------VARIABLES A NE PAS MODIFIER---
+
+  // Function to get fill color of ellipse
+  function getEllipseFillColor() {
+    const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
+    if (svgElement) {
+      const ellipseElement = svgElement.querySelector('ellipse.color1');
+      if (ellipseElement) {
+        return ellipseElement.getAttribute('fill');
+      }
+    }
+    return null; // Return null if the element or attribute is not found
+  }
+	
+	function getParentElt(nombre)
+	{
+		var pnode = elt[nombre].parentNode.parentNode.parentNode;
+		while (pnode.getAttribute('id') == null)
+		{
+			pnode = pnode.parentNode;
+		}
+		pnode = pnode.parentNode.parentNode;
+		return (pnode);
+	}		
+			
+			function getParent(name)
+	{
+		var pnode = document.getElementById(name).parentNode.parentNode.parentNode;
+		while (pnode.getAttribute('id') == null)
+		{
+			pnode = pnode.parentNode;
+		}
+		pnode = pnode.parentNode.parentNode;
+		return (pnode);
+	}
+function getTexte(name)
+	{
+		var pnode = getParent(name);
+		if (pnode.querySelector('font')!=null)
+		{
+		var lastDiv=pnode.querySelector('font');
+		}
+		else if (pnode.querySelector('.genially-view-text').querySelector('div')!=null) {
+		var lastDiv=pnode.querySelector('.genially-view-text').querySelector('div');
+		}
+		else 
+		{
+		var lastDiv=pnode.querySelector('.genially-view-text');
+		}
+		return lastDiv;
+	}
+			var refparent=document.getElementById('INITcouise').parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+			var refpage=refparent.getAttribute('id');	
+			var stop='niet'+refpage;
+			if(sessionStorage.getItem(stop)!=null) {var niet = sessionStorage.getItem(stop);} else {var niet=0}
+			var question;
+			var reponse = [];
+			var faux = 0;
+			if  (document.getElementById('boncouise')){var BON = getParent('boncouise');}
+			if (document.getElementById('erreurcouise')){var PASBON = getParent('erreurcouise');}
+			if (document.getElementById('masquecouise')){var MASQUE = getParent('masquecouise');}
+			//--- DISPARITION FENETRE ----
+			setTimeout(function()
+			{
+				document.getElementsByClassName('icon-close')[0].click()
+			}, 10);
+			document.getElementById('genially-view-modal').style.visibility = "hidden";
+			//--- RECUPERATION DES REPONSES
+			for (var i = 1; i < solution.length + 1; i++)
+			{
+				question = "q" + i;
+				reponse[i - 1] = document.getElementById(question).value;
+				if (espace==1) {reponse[i-1]=reponse[i-1].trim()}
+			}
+			//--- SAUVEGARDE et AFFICHAGE DES TENTATIVES	
+			if (tentative == 1)
+			{
+			var refparent=document.getElementById('INITcouise').parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+			var refpage=refparent.getAttribute('id');
+			var stockage='fois'+refpage;
+			var resultat='faux'+refpage;
+			if (sessionStorage.getItem(stockage)==null){sessionStorage.setItem(stockage,0);}
+			var fois=parseInt(sessionStorage.getItem(stockage),10);
+			
+			if (((maxtentative!=0)&&(fois<maxtentative)&&(niet!=1))||((maxtentative==0)&&(niet!=1)))
+			{
+			fois=fois+1;
+			getTexte('tentativecouise').innerHTML=fois;
+			sessionStorage.setItem(stockage,fois)
+			}
+			else 
+			{
+			var niet=1;
+			}
+			
+			if (unefois == 1)
+			{
+			var blocage='bloc'+refpage;
+			sessionStorage.setItem(blocage,unefois);
+						}
+			}
+			//--- SI niet (nombre max de tentatives pas atteint) PAS A 1 , ON TRAITE LA SUITE 
+			if (niet==0)
+			{
+			
+			//--- SI PAS RESPECT DE LA CASSE ON MET TOUT EN MAJUSCULE	
+			if (casse != 1)
+			{
+				for (var b = 0; b < solution.length; b++)
+				{
+					reponse[b] = reponse[b].toUpperCase();
+					solution[b] = solution[b].toUpperCase();
+				}
+			}
+			//--- SI ORDRE QUESTION-REPONSE PAS UTILE ON NE TRIE PLUS LES TABLEAUX 	MAIS ON FAIT UN TRUC COMPLIQUE QUI MARCHE PAR MIRACLE
+			if (ordre != 1)
+			{	
+				for (var a = 0; a < reponse.length; a++)
+			{
+				var b=a+1; question = "q" + b;
+								
+				var correspondance=0; var vert=0;
+				
+				for (var i = 0; i < solution.length; i++)
+				{
+				var alternative = solution[i].split('|');
+				for (var x = 0; x < alternative.length; x++)
+				{
+				if (reponse[a] === alternative[x]){correspondance=1;} 
+				}
+					
+				if (correspondance==0)
+				
+				{
+				if((correct==1)&&(vert!=1)){document.getElementById(question).style.color='red';}
+				console.log("a="+a+" "+reponse[a]+question+" "+enleve+" i="+i+" "+solution+" x="+x+" faux="+faux+" vert="+vert);
+				}
+				else
+				{
+				if((correct==1)&&(vert!=1)){document.getElementById(question).style.color='green'; }	
+				var enleve=solution.splice(i,1);
+				console.log("a="+a+" "+reponse[a]+question+" "+enleve+" i="+i+" "+solution+" x="+x+" faux="+faux+" vert="+vert);
+				vert=1;break;
+				}
+				}
+			}
+			if (solution.length!=0){faux = 1;};
+			}
+					
+			
+			//--- ON TESTE CHAQUE ENTREE DU TABLEAU - SI PAS EQUIVALENT ON MET 'FAUX' A 1 - TOUJOURS VRAI MAIS SI ORDRE A 1
+			
+			else{
+			for (var a = 0; a < solution.length; a++)
+			{
+				var b=a+1; question = "q" + b;
+				
+				var correspondance=0;
+				var alternative = solution[a].split('|');
+				for (var x = 0; x < alternative.length; x++)
+				{
+				if (reponse[a] === alternative[x]){correspondance=1;}
+				}
+					
+				if (correspondance==0)
+				
+				{
+				faux = 1;
+				if(correct==1){document.getElementById(question).style.color='red'}
+				}
+				else
+				{
+				if(correct==1){document.getElementById(question).style.color=ellipseFillColor}			
+				}
+			}
+			}
+			//--- SI FAUX =1 ALORS ON AFFICHE L'OBJET ERREUR- SINON MESSAGE OK	
+			if (unefois == 1)
+		{
+		sessionStorage.setItem(resultat,faux);
+		}
+			
+			if (faux == 1)
+			{
+				var elt=document.querySelectorAll('.boncouise');
+					for (var i=0;i<elt.length;i++)
+					{getParentElt(i).style.display="none";}
+				var elt=document.querySelectorAll('.erreurcouise');
+					for (var i=0;i<elt.length;i++)
+					{getParentElt(i).style.display="block";}
+				var elt=document.querySelectorAll('.masquecouise');
+					for (var i=0;i<elt.length;i++)
+					{getParentElt(i).style.display="block";}
+				if (document.getElementById('erreurcouise')){PASBON.style.display = "block";}
+				if (document.getElementById('boncouise')){BON.style.display = "none";}
+				if (document.getElementById('masquecouise')){MASQUE.style.display = "block"}
+			}
+			else
+			{
+				var elt=document.querySelectorAll('.boncouise');
+					for (var i=0;i<elt.length;i++)
+					{getParentElt(i).style.display="block";}
+				var elt=document.querySelectorAll('.erreurcouise');
+					for (var i=0;i<elt.length;i++)
+					{getParentElt(i).style.display="none";}
+				var elt=document.querySelectorAll('.masquecouise');
+					for (var i=0;i<elt.length;i++)
+					{getParentElt(i).style.display="none";}
+					if (document.getElementById('boncouise')){BON.style.display = "block";}
+				if (document.getElementById('erreurcouise')){PASBON.style.display = "none";}
+				if (document.getElementById('masquecouise')){MASQUE.style.display = "none";}
+				
+				if (unefois==1)
+				{
+				var refparent=document.getElementById('INITcouise').parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				var refpage=refparent.getAttribute('id');
+				var stop='niet'+refpage;
+				sessionStorage.setItem(stop,1);
+				}
+			}
+			}
+			
+
+</script>

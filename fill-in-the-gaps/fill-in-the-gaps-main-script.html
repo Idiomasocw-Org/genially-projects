@@ -1,0 +1,176 @@
+<div
+  id="INITcouise"
+  style="
+    font-size: 16px;
+    text-align: center;
+    background-color: black;
+    color: white;
+  "
+>
+  INITIALISATION-COUISE V2.4<br />(Numérote les champs et vide les champs
+  réponses en VISUALISATION uniquement)
+</div>
+<script>
+  // Hide modal overlay to prevent screen darkening
+  setTimeout(function() {
+    var modalPortal = document.querySelector('.ReactModalPortal');
+    if (modalPortal) {
+      modalPortal.style.display = 'none';
+    }
+  }, 10);
+
+  // auto-incrémente les champs réponses
+  var champ = document.querySelectorAll(".question");
+  for (var i = 0; i < champ.length; i++) {
+    var ref = "q" + (i + 1);
+    champ[i].setAttribute("value", ref);
+    champ[i].setAttribute("id", ref);
+    champ[i].setAttribute("name", ref);
+  }
+
+  var url = window.location.pathname.split("/");
+  var refgenial = url[1];
+  // affiche Q1 Q2 etc en edition et prévisualisation
+  if (refgenial != "editor" && refgenial != "Preview") {
+    for (var i = 0; i < champ.length; i++) {
+      champ[i].setAttribute("value", "");
+    }
+  }
+  //
+  if (refgenial != "editor") {
+    document.getElementById("INITcouise").style.display = "none";
+    if (document.getElementById("boncouise")) {
+      document.getElementById("boncouise").style.display = "none";
+    }
+    if (document.getElementById("erreurcouise")) {
+      document.getElementById("erreurcouise").style.display = "none";
+    }
+    if (document.getElementById("masquecouise")) {
+      document.getElementById("masquecouise").style.display = "none";
+    }
+    if (document.getElementById("tentativecouise")) {
+      document.getElementById("tentativecouise").style.display = "none";
+    }
+    function getParentElt(nombre) {
+      var pnode = elt[nombre].parentNode.parentNode.parentNode;
+      while (pnode.getAttribute("id") == null) {
+        pnode = pnode.parentNode;
+      }
+      pnode = pnode.parentNode.parentNode;
+      return pnode;
+    }
+    var elt = document.querySelectorAll(".boncouise");
+    for (var i = 0; i < elt.length; i++) {
+      elt[i].style.display = "none";
+    }
+    var elt = document.querySelectorAll(".erreurcouise");
+    for (var i = 0; i < elt.length; i++) {
+      elt[i].style.display = "none";
+    }
+    var elt = document.querySelectorAll(".masquecouise");
+    for (var i = 0; i < elt.length; i++) {
+      elt[i].style.display = "none";
+    }
+
+    function getParent(name) {
+      var pnode =
+        document.getElementById(name).parentNode.parentNode.parentNode;
+      while (pnode.getAttribute("id") == null) {
+        pnode = pnode.parentNode;
+      }
+      pnode = pnode.parentNode.parentNode;
+      return pnode;
+    }
+    function getTexte(name) {
+      var pnode = getParent(name);
+      if (pnode.querySelector("font") != null) {
+        var lastDiv = pnode.querySelector("font");
+      } else if (
+        pnode.querySelector(".genially-view-text").querySelector("div") != null
+      ) {
+        var lastDiv = pnode
+          .querySelector(".genially-view-text")
+          .querySelector("div");
+      } else {
+        var lastDiv = pnode.querySelector(".genially-view-text");
+      }
+      return lastDiv;
+    }
+    if (document.getElementById("boncouise")) {
+      getParent("boncouise").style.display = "none";
+    }
+    if (document.getElementById("erreurcouise")) {
+      getParent("erreurcouise").style.display = "none";
+    }
+    var elt = document.querySelectorAll(".boncouise");
+    for (var i = 0; i < elt.length; i++) {
+      getParentElt(i).style.display = "none";
+    }
+    var elt = document.querySelectorAll(".erreurcouise");
+    for (var i = 0; i < elt.length; i++) {
+      getParentElt(i).style.display = "none";
+    }
+    var refparent =
+      document.getElementById("INITcouise").parentNode.parentNode.parentNode
+        .parentNode.parentNode.parentNode;
+    var refpage = refparent.getAttribute("id");
+    var stockage = "fois" + refpage;
+    var blocage = "bloc" + refpage;
+    var resultat = "faux" + refpage;
+    if (sessionStorage.getItem(blocage) != 1) {
+      sessionStorage.setItem(stockage, 0);
+    }
+    if (document.getElementById("tentativecouise")) {
+      getTexte("tentativecouise").innerHTML = sessionStorage.getItem(stockage);
+    }
+    if (sessionStorage.getItem(resultat) != null) {
+      var faux = sessionStorage.getItem(resultat);
+
+      if (faux == 1) {
+        var elt = document.querySelectorAll(".boncouise");
+        for (var i = 0; i < elt.length; i++) {
+          getParentElt(i).style.display = "none";
+        }
+        var elt = document.querySelectorAll(".erreurcouise");
+        for (var i = 0; i < elt.length; i++) {
+          getParentElt(i).style.display = "block";
+        }
+        var elt = document.querySelectorAll(".masquecouise");
+        for (var i = 0; i < elt.length; i++) {
+          getParentElt(i).style.display = "block";
+        }
+        if (document.getElementById("erreurcouise")) {
+          getParent("erreurcouise").style.display = "block";
+        }
+        if (document.getElementById("boncouise")) {
+          getParent("boncouise").style.display = "none";
+        }
+        if (document.getElementById("masquecouise")) {
+          getParent("masquecouise").style.display = "block";
+        }
+      } else {
+        var elt = document.querySelectorAll(".boncouise");
+        for (var i = 0; i < elt.length; i++) {
+          getParentElt(i).style.display = "block";
+        }
+        var elt = document.querySelectorAll(".erreurcouise");
+        for (var i = 0; i < elt.length; i++) {
+          getParentElt(i).style.display = "none";
+        }
+        var elt = document.querySelectorAll(".masquecouise");
+        for (var i = 0; i < elt.length; i++) {
+          getParentElt(i).style.display = "none";
+        }
+        if (document.getElementById("boncouise")) {
+          getParent("boncouise").style.display = "block";
+        }
+        if (document.getElementById("erreurcouise")) {
+          getParent("erreurcouise").style.display = "none";
+        }
+        if (document.getElementById("masquecouise")) {
+          getParent("masquecouise").style.display = "none";
+        }
+      }
+    }
+  }
+</script>
