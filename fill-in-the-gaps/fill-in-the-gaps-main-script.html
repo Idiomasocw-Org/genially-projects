@@ -1,22 +1,28 @@
-<div
-  id="INITcouise"
-  style="
+<div id="INITcouise" style="
     font-size: 16px;
     text-align: center;
     background-color: black;
     color: white;
-  "
->
+  ">
   INITIALISATION-COUISE V2.4<br />(Numérote les champs et vide les champs
   réponses en VISUALISATION uniquement)
 </div>
 <script>
-  // Hide modal overlay to prevent screen darkening
-  setTimeout(function() {
-    var modalPortal = document.querySelector('.ReactModalPortal');
-    if (modalPortal) {
-      modalPortal.style.display = 'none';
+  setTimeout(function () {
+    // Evita que Genially oscurezca la pantalla con el modal
+    function hideGeniallyOverlay() {
+      document.querySelectorAll('.ReactModalPortal, .ReactModal__Overlay')
+        .forEach(function (el) {
+          el.style.display = 'none';
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+        });
     }
+    // Lo oculta al inicio
+    setTimeout(hideGeniallyOverlay, 10);
+    // Observa el DOM y lo vuelve a ocultar si aparece otra vez solo si genially lo coloca automaticamente
+    const observer = new MutationObserver(hideGeniallyOverlay);
+    observer.observe(document.body, { childList: true, subtree: true });
   }, 10);
 
   // auto-incrémente les champs réponses
