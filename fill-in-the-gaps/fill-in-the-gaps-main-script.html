@@ -1,20 +1,56 @@
-<div id="INITcouise" style="
+<div id="INITcouise" data-activity-id="" style="
     font-size: 16px;
     text-align: center;
     background-color: black;
     color: white;
   ">
-  INITIALISATION-COUISE V2.4<br />(Numera los campos y vacía los campos de respuesta SOLAMENTE en VISUALIZACIÓN)
+  INITIALISATION-COUISE V2.5<br />(Numera los campos y vacía los campos de respuesta SOLAMENTE en VISUALIZACIÓN)<br />
+  <small>ID Actividad: <span class="activity-id-display"></span></small>
 </div>
 
 <script>
   /* --------------------------------------------------------------
-     PLUGIN “FILL‑IN‑THE‑GAPS”
-     - Oculta los modales de Genially que oscurecen la pantalla.
-     - Autoincrementa los campos de respuesta.
-     - Gestiona la visibilidad de los mensajes de error/éxito.
-     - Usa const/let, arrow functions y funciones reutilizables.
+     PLUGIN "FILL‑IN‑THE‑GAPS" V2.5
+     - Sistema de identificación único por actividad
+     - IDs descriptivos (act1_resp1, act1_intentos...)
      -------------------------------------------------------------- */
+
+  // 0. Sistema de identificación único por actividad
+  const initWidget = document.getElementById('INITcouise');
+  let activityId = initWidget.getAttribute('data-activity-id');
+
+  // Si no hay ID definido, generar uno corto y descriptivo
+  if (!activityId || activityId.trim() === '') {
+    // Contar cuántos widgets INITcouise hay antes de este
+    const allInitWidgets = document.querySelectorAll('[id^="INITcouise"]');
+    const widgetIndex = Array.from(allInitWidgets).indexOf(initWidget);
+    activityId = `act${widgetIndex + 1}`; // act1, act2, act3...
+    initWidget.setAttribute('data-activity-id', activityId);
+  }
+
+  // Mostrar el ID en el widget (solo visible en editor)
+  const activityIdDisplay = initWidget.querySelector('.activity-id-display');
+  if (activityIdDisplay) {
+    activityIdDisplay.textContent = activityId;
+  }
+
+  // Guardar el activityId globalmente para que check-button.html pueda acceder
+  window.currentActivityId = activityId;
+
+  console.log(`Fill-in-the-gaps iniciado con ID: ${activityId}`);
+
+  // Helper para crear claves de storage descriptivas
+  // Ejemplo: act1_intentos, act1_bloqueado
+  const createStorageKey = (key) => {
+    const keyMap = {
+      'fois': 'intentos',
+      'bloc': 'bloqueado',
+      'faux': 'resultado',
+      'niet': 'estado'
+    };
+    const readableKey = keyMap[key] || key;
+    return `${activityId}_${readableKey}`;
+  };
 
   // 1. Ocultar overlay de Genially al inicio
   setTimeout(() => {
@@ -33,13 +69,27 @@
   }, 15);
 
   // 2. Autoincrementar campos de respuesta (.question)
-  const questions = document.querySelectorAll(".question");
+  const findActivityContainer = () => {
+    let container = initWidget.parentNode;
+    for (let i = 0; i < 6; i++) {
+      if (container.parentNode) container = container.parentNode;
+    }
+    return container;
+  };
+
+  const activityContainer = findActivityContainer();
+  const questions = activityContainer.querySelectorAll(".question");
+
   questions.forEach((q, i) => {
-    const ref = "q" + (i + 1);
+    // ID descriptivo: act1_resp1, act1_resp2...
+    const ref = `${activityId}_resp${i + 1}`;
     q.setAttribute("value", ref);
     q.setAttribute("id", ref);
     q.setAttribute("name", ref);
+    q.setAttribute("data-activity-id", activityId);
   });
+
+  console.log(`${questions.length} preguntas encontradas para actividad ${activityId}`);
 
   // 3. Lógica principal (solo en visualización, no en editor)
   const urlParts = window.location.pathname.split("/");
@@ -63,7 +113,7 @@
     hideElement("masquecouise");
     hideElement("tentativecouise");
 
-    // Helper para encontrar el contenedor padre (lógica original preservada)
+    // Helper para encontrar el contenedor padre
     const findParentContainer = (element) => {
       if (!element) return null;
       let pnode = element.parentNode.parentNode.parentNode;
@@ -73,20 +123,13 @@
       return pnode ? pnode.parentNode.parentNode : null;
     };
 
-    // Helper para obtener el contenedor por ID
     const getParentById = (id) => {
       const el = document.getElementById(id);
       return findParentContainer(el);
     };
 
-    // Helper para obtener el contenedor de un elemento en una lista
-    const getParentFromList = (list, index) => {
-      return findParentContainer(list[index]);
-    };
-
-    // Ocultar grupos de elementos (.boncouise, .erreurcouise, etc.)
     const hideGroup = (className) => {
-      const elements = document.querySelectorAll("." + className);
+      const elements = activityContainer.querySelectorAll("." + className);
       elements.forEach(el => {
         const parent = findParentContainer(el);
         if (parent) parent.style.display = "none";
@@ -97,7 +140,6 @@
     hideGroup("erreurcouise");
     hideGroup("masquecouise");
 
-    // Helper para obtener el texto dentro de un contenedor
     const getTexte = (name) => {
       const pnode = getParentById(name);
       if (!pnode) return null;
@@ -111,38 +153,36 @@
       }
     };
 
-    // Ocultar contenedores padres específicos si existen
-    if (document.getElementById("boncouise")) getParentById("boncouise").style.display = "none";
-    if (document.getElementById("erreurcouise")) getParentById("erreurcouise").style.display = "none";
+    if (document.getElementById("boncouise")) {
+      const parent = getParentById("boncouise");
+      if (parent) parent.style.display = "none";
+    }
+    if (document.getElementById("erreurcouise")) {
+      const parent = getParentById("erreurcouise");
+      if (parent) parent.style.display = "none";
+    }
 
-    // Gestión de estado (intentos y resultados)
-    const initWidget = document.getElementById("INITcouise");
-    // Subir niveles desde INITcouise para encontrar el ID de la página
-    const refParentPage = initWidget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-    const refPageId = refParentPage.getAttribute("id");
+    // Gestión de estado con nombres descriptivos
+    const storageKey = createStorageKey("fois"); // act1_intentos
+    const blockKey = createStorageKey("bloc");   // act1_bloqueado
+    const resultKey = createStorageKey("faux");  // act1_resultado
 
-    const storageKey = "fois" + refPageId;
-    const blockKey = "bloc" + refPageId;
-    const resultKey = "faux" + refPageId;
+    console.log(`Claves: ${storageKey}, ${blockKey}, ${resultKey}`);
 
-    // Inicializar contador de intentos
     if (sessionStorage.getItem(blockKey) != 1) {
       sessionStorage.setItem(storageKey, 0);
     }
 
-    // Mostrar intentos si existe el elemento
     if (document.getElementById("tentativecouise")) {
       const textEl = getTexte("tentativecouise");
       if (textEl) textEl.innerHTML = sessionStorage.getItem(storageKey);
     }
 
-    // Restaurar estado de acierto/fallo si existe
     if (sessionStorage.getItem(resultKey) != null) {
       const isFalse = sessionStorage.getItem(resultKey) == 1;
 
-      // Helpers para mostrar/ocultar grupos
       const toggleGroupDisplay = (className, show) => {
-        const elements = document.querySelectorAll("." + className);
+        const elements = activityContainer.querySelectorAll("." + className);
         elements.forEach(el => {
           const parent = findParentContainer(el);
           if (parent) parent.style.display = show ? "block" : "none";
@@ -158,7 +198,6 @@
       };
 
       if (isFalse) {
-        // Fallo: Ocultar BON, Mostrar ERREUR y MASQUE
         toggleGroupDisplay("boncouise", false);
         toggleGroupDisplay("erreurcouise", true);
         toggleGroupDisplay("masquecouise", true);
@@ -167,7 +206,6 @@
         toggleElementDisplay("boncouise", false);
         toggleElementDisplay("masquecouise", true);
       } else {
-        // Acierto: Mostrar BON, Ocultar ERREUR y MASQUE
         toggleGroupDisplay("boncouise", true);
         toggleGroupDisplay("erreurcouise", false);
         toggleGroupDisplay("masquecouise", false);

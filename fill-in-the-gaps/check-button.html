@@ -1,209 +1,244 @@
-<script>
-	/* --------------------------------------------------------------
-	   SCRIPT DE VALIDACIÓN (CHECK BUTTON)
-	   - Compara las respuestas del usuario con la solución.
-	   - Muestra feedback visual (colores y tooltip de caracteres).
-	   - Gestiona intentos y bloqueo.
-	   -------------------------------------------------------------- */
+	<script>
+		/* --------------------------------------------------------------
+		SCRIPT DE VALIDACIÓN (CHECK BUTTON) V2.5
+		- Sistema de identificación único por actividad
+		- IDs descriptivos (act1_resp1, act1_intentos...)
+		-------------------------------------------------------------- */
 
-	// --- VARIABLES DE USUARIO ---
-	var solution = ["facilitating"]; // Ingrese sus respuestas esperadas
-	var ordre = 1;         // 1: orden importante, 0: orden no importa
-	var espace = 1;        // 1: ignorar espacios inicio/fin
-	var casse = 0;         // 1: distinguir mayúsculas/minúsculas
-	var correct = 1;       // 1: mostrar errores (rojo/verde)
-	var tentative = 0;     // 1: mostrar contador de intentos
-	var maxtentative = 0;  // Máximo de intentos (0 = ilimitado)
-	var unefois = 0;       // 1: bloquear tras un intento
+		// --- VARIABLES DE USUARIO ---
+		var solution = ["facilitating"]; // Ingrese sus respuestas esperadas
+		var ordre = 1;         // 1: orden importante, 0: orden no importa
+		var espace = 1;        // 1: ignorar espacios inicio/fin
+		var casse = 0;         // 1: distinguir mayúsculas/minúsculas
+		var correct = 1;       // 1: mostrar errores (rojo/verde)
+		var tentative = 0;     // 1: mostrar contador de intentos
+		var maxtentative = 0;  // Máximo de intentos (0 = ilimitado)
+		var unefois = 0;       // 1: bloquear tras un intento
 
-	// --- VARIABLES INTERNAS ---
-	var ellipseFillColor = 'green'; // Color por defecto para aciertos
-	try {
-		const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
-		if (svgElement) {
-			const ellipse = svgElement.querySelector('ellipse.color1');
-			if (ellipse) ellipseFillColor = ellipse.getAttribute('fill');
-		}
-	} catch (e) { }
+		// --- VARIABLES INTERNAS ---
+		var ellipseFillColor = 'green'; // Color por defecto para aciertos
+		try {
+			const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
+			if (svgElement) {
+				const ellipse = svgElement.querySelector('ellipse.color1');
+				if (ellipse) ellipseFillColor = ellipse.getAttribute('fill');
+			}
+		} catch (e) { }
 
-	// Helpers locales (por si el script principal no está cargado)
-	function getParent(name) {
-		var pnode = document.getElementById(name);
-		if (!pnode) return null;
-		pnode = pnode.parentNode.parentNode.parentNode;
-		while (pnode && pnode.getAttribute('id') == null) {
-			pnode = pnode.parentNode;
-		}
-		return pnode ? pnode.parentNode.parentNode : null;
-	}
-
-	function getTexte(name) {
-		var pnode = getParent(name);
-		if (!pnode) return null;
-		if (pnode.querySelector('font')) return pnode.querySelector('font');
-		if (pnode.querySelector('.genially-view-text div')) return pnode.querySelector('.genially-view-text div');
-		return pnode.querySelector('.genially-view-text');
-	}
-
-	function getParentElt(index) {
-		// Esta función asume que 'elt' está definido globalmente o en el contexto, 
-		// pero en el código original se redefinía 'elt' varias veces.
-		// Para seguridad, buscaremos los elementos dinámicamente.
-		return null; // No usada directamente en la lógica simplificada abajo
-	}
-
-	// --- LÓGICA PRINCIPAL ---
-	(function () {
-		// Referencias a la página
-		var initWidget = document.getElementById('INITcouise');
-		if (!initWidget) return;
-
-		var refparent = initWidget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-		var refpage = refparent.getAttribute('id');
-		var stop = 'niet' + refpage;
-		var niet = sessionStorage.getItem(stop) || 0;
-
-		// Elementos de feedback global
-		var BON = document.getElementById('boncouise') ? getParent('boncouise') : null;
-		var PASBON = document.getElementById('erreurcouise') ? getParent('erreurcouise') : null;
-		var MASQUE = document.getElementById('masquecouise') ? getParent('masquecouise') : null;
-
-		// Cerrar modal de Genially si está abierto (hack)
-		setTimeout(function () {
-			var closeBtn = document.getElementsByClassName('icon-close')[0];
-			if (closeBtn) closeBtn.click();
-		}, 10);
-		var modal = document.getElementById('genially-view-modal');
-		if (modal) modal.style.visibility = "hidden";
-
-		// Recuperar respuestas del usuario
-		var reponse = [];
-		for (var i = 1; i <= solution.length; i++) {
-			var el = document.getElementById("q" + i);
-			var val = el ? el.value : "";
-			if (espace == 1) val = val.trim();
-			reponse.push(val);
+		// Helpers locales
+		function getParent(name) {
+			var pnode = document.getElementById(name);
+			if (!pnode) return null;
+			pnode = pnode.parentNode.parentNode.parentNode;
+			while (pnode && pnode.getAttribute('id') == null) {
+				pnode = pnode.parentNode;
+			}
+			return pnode ? pnode.parentNode.parentNode : null;
 		}
 
-		// Gestión de intentos
-		if (tentative == 1) {
-			var stockage = 'fois' + refpage;
-			var blocage = 'bloc' + refpage;
-
-			if (sessionStorage.getItem(stockage) == null) sessionStorage.setItem(stockage, 0);
-			var fois = parseInt(sessionStorage.getItem(stockage), 10);
-
-			if ((maxtentative != 0 && fois < maxtentative && niet != 1) || (maxtentative == 0 && niet != 1)) {
-				fois++;
-				var txtTentative = getTexte('tentativecouise');
-				if (txtTentative) txtTentative.innerHTML = fois;
-				sessionStorage.setItem(stockage, fois);
-			} else {
-				niet = 1;
-			}
-
-			if (unefois == 1) {
-				sessionStorage.setItem(blocage, unefois);
-			}
+		function getTexte(name) {
+			var pnode = getParent(name);
+			if (!pnode) return null;
+			if (pnode.querySelector('font')) return pnode.querySelector('font');
+			if (pnode.querySelector('.genially-view-text div')) return pnode.querySelector('.genially-view-text div');
+			return pnode.querySelector('.genially-view-text');
 		}
 
-		// Validación
-		if (niet == 0) {
-			var faux = 0;
-
-			// Normalizar mayúsculas si es necesario
-			var solProc = solution.slice();
-			var repProc = reponse.slice();
-
-			if (casse != 1) {
-				for (var b = 0; b < solProc.length; b++) {
-					solProc[b] = solProc[b].toUpperCase();
-					repProc[b] = repProc[b].toUpperCase();
-				}
+		// --- LÓGICA PRINCIPAL ---
+		(function () {
+			// Referencias a la página
+			var initWidget = document.getElementById('INITcouise');
+			if (!initWidget) {
+				console.error(' No se encontró el widget INITcouise');
+				return;
 			}
 
-			// Comparación
-			for (var a = 0; a < solProc.length; a++) {
-				var questionId = "q" + (a + 1);
-				var elQuestion = document.getElementById(questionId);
-				var userVal = repProc[a];
-				var correctVal = solProc[a]; // Puede tener pipes: "A|B"
-
-				var isCorrect = false;
-				var alternatives = correctVal.split('|');
-
-				// En modo desordenado (ordre != 1), la lógica original era compleja.
-				// Aquí simplificamos asumiendo orden 1 por defecto o buscando coincidencia.
-				// Si ordre=0, deberíamos buscar si userVal coincide con CUALQUIER solución no usada.
-				// Pero para mantener compatibilidad con el código original y añadir feedback,
-				// nos centraremos en la comparación directa (ordre=1) que es lo más común.
-
-				if (ordre != 1) {
-					// Lógica simple para desordenado: ¿existe esta respuesta en la solución?
-					// Nota: Esto no maneja duplicados perfectamente como el original, pero funciona para validación básica.
-					for (var k = 0; k < solProc.length; k++) {
-						var alts = solProc[k].split('|');
-						if (alts.includes(userVal)) { isCorrect = true; break; }
-					}
-				} else {
-					isCorrect = alternatives.includes(userVal);
-				}
-
-				if (!isCorrect) {
-					faux = 1;
-					if (correct == 1 && elQuestion) {
-						elQuestion.style.color = 'red';
-						// --- NUEVO: FEEDBACK DE CARACTERES ---
-						if (window.showCharFeedback) {
-							// Usamos la respuesta original (sin uppercase forzado) para el feedback visual
-							window.showCharFeedback(questionId, reponse[a], solution[a]);
-						}
-					}
-				} else {
-					if (correct == 1 && elQuestion) {
-						elQuestion.style.color = ellipseFillColor;
-						// --- NUEVO: QUITAR FEEDBACK ---
-						if (window.removeCharFeedback) {
-							window.removeCharFeedback(questionId);
-						}
-					}
-				}
+			// Obtener el ID de actividad único
+			var activityId = initWidget.getAttribute('data-activity-id') || window.currentActivityId;
+			if (!activityId) {
+				console.error('No se encontró el ID de actividad');
+				return;
 			}
 
-			// Mostrar resultados globales
-			var resultat = 'faux' + refpage;
-			if (unefois == 1) sessionStorage.setItem(resultat, faux);
+			console.log(`Check button ejecutándose para actividad: ${activityId}`);
 
-			// Helpers para mostrar/ocultar grupos
-			var toggleGroup = function (cls, show) {
-				var els = document.querySelectorAll('.' + cls);
-				els.forEach(function (e) {
-					// Subir niveles para encontrar el contenedor (lógica original simplificada)
-					var p = e.parentNode.parentNode.parentNode;
-					while (p && !p.getAttribute('id')) p = p.parentNode;
-					if (p) p.parentNode.parentNode.style.display = show ? 'block' : 'none';
-				});
+			// Helper para crear claves de storage descriptivas
+			const createStorageKey = (key) => {
+				const keyMap = {
+					'fois': 'intentos',
+					'bloc': 'bloqueado',
+					'faux': 'resultado',
+					'niet': 'estado'
+				};
+				const readableKey = keyMap[key] || key;
+				return `${activityId}_${readableKey}`;
 			};
 
-			if (faux == 1) {
-				toggleGroup('boncouise', false);
-				toggleGroup('erreurcouise', true);
-				toggleGroup('masquecouise', true);
-				if (PASBON) PASBON.style.display = "block";
-				if (BON) BON.style.display = "none";
-				if (MASQUE) MASQUE.style.display = "block";
-			} else {
-				toggleGroup('boncouise', true);
-				toggleGroup('erreurcouise', false);
-				toggleGroup('masquecouise', false);
-				if (BON) BON.style.display = "block";
-				if (PASBON) PASBON.style.display = "none";
-				if (MASQUE) MASQUE.style.display = "none";
+			var stop = createStorageKey('niet'); // act1_estado
+			var niet = sessionStorage.getItem(stop) || 0;
+
+			// Elementos de feedback global
+			var BON = document.getElementById('boncouise') ? getParent('boncouise') : null;
+			var PASBON = document.getElementById('erreurcouise') ? getParent('erreurcouise') : null;
+			var MASQUE = document.getElementById('masquecouise') ? getParent('masquecouise') : null;
+
+			// Cerrar modal de Genially si está abierto (hack)
+			setTimeout(function () {
+				var closeBtn = document.getElementsByClassName('icon-close')[0];
+				if (closeBtn) closeBtn.click();
+			}, 10);
+			var modal = document.getElementById('genially-view-modal');
+			if (modal) modal.style.visibility = "hidden";
+
+			// Recuperar respuestas usando los IDs descriptivos
+			var reponse = [];
+			for (var i = 1; i <= solution.length; i++) {
+				// Buscar el input con el ID descriptivo: act1_resp1
+				var questionId = `${activityId}_resp${i}`;
+				var el = document.getElementById(questionId);
+
+				if (!el) {
+					// Fallback: intentar con el ID antiguo
+					el = document.getElementById("q" + i);
+				}
+
+				var val = el ? el.value : "";
+				if (espace == 1) val = val.trim();
+				reponse.push(val);
+			}
+
+			console.log(`Respuestas recuperadas: ${reponse.length}`);
+
+			// Gestión de intentos con namespace descriptivo
+			if (tentative == 1) {
+				var stockage = createStorageKey('fois'); // act1_intentos
+				var blocage = createStorageKey('bloc');  // act1_bloqueado
+
+				if (sessionStorage.getItem(stockage) == null) sessionStorage.setItem(stockage, 0);
+				var fois = parseInt(sessionStorage.getItem(stockage), 10);
+
+				if ((maxtentative != 0 && fois < maxtentative && niet != 1) || (maxtentative == 0 && niet != 1)) {
+					fois++;
+					var txtTentative = getTexte('tentativecouise');
+					if (txtTentative) txtTentative.innerHTML = fois;
+					sessionStorage.setItem(stockage, fois);
+					console.log(`Intento #${fois} registrado`);
+				} else {
+					niet = 1;
+					console.log(`Máximo de intentos alcanzado`);
+				}
 
 				if (unefois == 1) {
-					sessionStorage.setItem(stop, 1);
+					sessionStorage.setItem(blocage, unefois);
 				}
 			}
-		}
-	})();
-</script>
+
+			// Validación
+			if (niet == 0) {
+				var faux = 0;
+
+				// Normalizar mayúsculas si es necesario
+				var solProc = solution.slice();
+				var repProc = reponse.slice();
+
+				if (casse != 1) {
+					for (var b = 0; b < solProc.length; b++) {
+						solProc[b] = solProc[b].toUpperCase();
+						repProc[b] = repProc[b].toUpperCase();
+					}
+				}
+
+				// Comparación
+				for (var a = 0; a < solProc.length; a++) {
+					var questionId = `${activityId}_resp${a + 1}`;
+					var elQuestion = document.getElementById(questionId);
+
+					// Fallback
+					if (!elQuestion) {
+						questionId = "q" + (a + 1);
+						elQuestion = document.getElementById(questionId);
+					}
+
+					var userVal = repProc[a];
+					var correctVal = solProc[a];
+
+					var isCorrect = false;
+					var alternatives = correctVal.split('|');
+
+					if (ordre != 1) {
+						for (var k = 0; k < solProc.length; k++) {
+							var alts = solProc[k].split('|');
+							if (alts.includes(userVal)) {
+								isCorrect = true;
+								break;
+							}
+						}
+					} else {
+						isCorrect = alternatives.includes(userVal);
+					}
+
+					if (!isCorrect) {
+						faux = 1;
+						if (correct == 1 && elQuestion) {
+							elQuestion.style.color = 'red';
+							if (window.showCharFeedback) {
+								window.showCharFeedback(questionId, reponse[a], solution[a]);
+							}
+						}
+					} else {
+						if (correct == 1 && elQuestion) {
+							elQuestion.style.color = ellipseFillColor;
+							if (window.removeCharFeedback) {
+								window.removeCharFeedback(questionId);
+							}
+						}
+					}
+				}
+
+				// Mostrar resultados globales
+				var resultat = createStorageKey('faux'); // act1_resultado
+				if (unefois == 1) sessionStorage.setItem(resultat, faux);
+
+				const findParentContainer = (element) => {
+					if (!element) return null;
+					let pnode = element.parentNode.parentNode.parentNode;
+					while (pnode && pnode.getAttribute("id") == null) {
+						pnode = pnode.parentNode;
+					}
+					return pnode ? pnode.parentNode.parentNode : null;
+				};
+
+				var toggleGroup = function (cls, show) {
+					var els = document.querySelectorAll('.' + cls);
+					els.forEach(function (e) {
+						var p = findParentContainer(e);
+						if (p) p.style.display = show ? 'block' : 'none';
+					});
+				};
+
+				if (faux == 1) {
+					console.log('Respuesta incorrecta');
+					toggleGroup('boncouise', false);
+					toggleGroup('erreurcouise', true);
+					toggleGroup('masquecouise', true);
+					if (PASBON) PASBON.style.display = "block";
+					if (BON) BON.style.display = "none";
+					if (MASQUE) MASQUE.style.display = "block";
+				} else {
+					console.log('Respuesta correcta');
+					toggleGroup('boncouise', true);
+					toggleGroup('erreurcouise', false);
+					toggleGroup('masquecouise', false);
+					if (BON) BON.style.display = "block";
+					if (PASBON) PASBON.style.display = "none";
+					if (MASQUE) MASQUE.style.display = "none";
+
+					if (unefois == 1) {
+						sessionStorage.setItem(stop, 1);
+					}
+				}
+			} else {
+				console.log('Actividad bloqueada');
+			}
+		})();
+	</script>
