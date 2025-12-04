@@ -1,16 +1,17 @@
+//--- RECUPERACION DES REPONSES
 <script>
-	//-----VARIABLES UTILISATEUR----	
-	var solution = ["facilitating"]; //entrez vos réponses attendues
-	var ordre = 1; // 0 ou 1 - tapez 1 si l'ordre des réponses est important (si 0 : les champs réponses sont équivalents  )
-	var espace = 1; //0 ou 1 - tapez 1 si les réponses doivent être nettoyées des espaces de début et fin 
-	var casse = 0; // 0 ou 1 -  tapez 1 si la casse (majuscules/minuscules) doit être respectée
-	var correct=1; // 0 ou 1 - tapez 1 pour visualiser les erreurs (couleurs rouge / vert)
-	var tentative=0; // 0 ou 1 - tapez 1 pour afficher le nombre des tentatives
-	var maxtentative=0; // 0 pour illimité - tapez le nombre des tentatives maximales autorisées (tentative doit être à 1)
-	var unefois=0; //0 ou 1 - tapez 1 pour empêcher de recommencer lors d'une session (le couise sera bloqué) (tentative doit être à 1)
-			//------VARIABLES A NE PAS MODIFIER---
+	//-----VARIABLES DE USUARIO----	
+	var solution = ["facilitating"]; //ingrese sus respuestas esperadas
+	var ordre = 1; //escriba 1 si el orden de las respuestas es importante (si 0: los campos de respuesta son equivalentes  )
+	var espace = 1; //0 o 1 - escriba 1 si las respuestas deben limpiarse de los espacios iniciales y finales
+	var casse = 0; // 0 o 1 - escriba 1 si la distinción entre mayúsculas y minúsculas (la 'caja') debe ser respetada
+	var correct=1; // 0 o 1 - escriba 1 para visualizar los errores (colores rojo/verde)
+	var tentative=0; // 0 o 1 - escriba 1 para mostrar el número de intentos
+	var maxtentative=0; // 0 para ilimitado - escriba el número de intentos máximos permitidos (el intento debe estar en 1
+	var unefois=0; //0 o 1 - escriba 1 para impedir reiniciar durante una sesión (el cuestionario será bloqueado) (el intento debe estar en 1)
+			//------VARIABLES PRINCIPALES NO MODIFICAR---
 
-  // Function to get fill color of ellipse
+  // Function to get fill color of ellipse-Función para obtener el color de relleno de la elipse,consultar qué color se utilizó para rellenar una forma elíptica en una interfaz
   function getEllipseFillColor() {
     const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
     if (svgElement) {
@@ -19,7 +20,7 @@
         return ellipseElement.getAttribute('fill');
       }
     }
-    return null; // Return null if the element or attribute is not found
+    return null; // Return null if the element or attribute is not found-Devolver null si no se encuentra el elemento o el atributo
   }
 	
 	function getParentElt(nombre)
@@ -69,20 +70,20 @@ function getTexte(name)
 			if  (document.getElementById('boncouise')){var BON = getParent('boncouise');}
 			if (document.getElementById('erreurcouise')){var PASBON = getParent('erreurcouise');}
 			if (document.getElementById('masquecouise')){var MASQUE = getParent('masquecouise');}
-			//--- DISPARITION FENETRE ----
+			//--- DESAPARICIÓN DE VENTANA -aqui el problema del overlay----
 			setTimeout(function()
 			{
 				document.getElementsByClassName('icon-close')[0].click()
 			}, 10);
 			document.getElementById('genially-view-modal').style.visibility = "hidden";
-			//--- RECUPERATION DES REPONSES
+			//--- RECUPERACIÓN DE LAS RESPUESTAS
 			for (var i = 1; i < solution.length + 1; i++)
 			{
 				question = "q" + i;
 				reponse[i - 1] = document.getElementById(question).value;
 				if (espace==1) {reponse[i-1]=reponse[i-1].trim()}
 			}
-			//--- SAUVEGARDE et AFFICHAGE DES TENTATIVES	
+			//--- GUARDAR y MOSTRAR LOS INTENTOS en el storage	
 			if (tentative == 1)
 			{
 			var refparent=document.getElementById('INITcouise').parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
@@ -109,11 +110,11 @@ function getTexte(name)
 			sessionStorage.setItem(blocage,unefois);
 						}
 			}
-			//--- SI niet (nombre max de tentatives pas atteint) PAS A 1 , ON TRAITE LA SUITE 
+			//--- SI no (número máximo de intentos no alcanzado) NO ES 1, SE PROCESA LO SIGUIENTE
 			if (niet==0)
 			{
 			
-			//--- SI PAS RESPECT DE LA CASSE ON MET TOUT EN MAJUSCULE	
+			//--- SI NO SE RESPETA LA DISTINCIÓN ENTRE MAYÚSCULAS Y MINÚSCULAS, SE PONE TODO EN MAYÚSCULA	
 			if (casse != 1)
 			{
 				for (var b = 0; b < solution.length; b++)
@@ -122,7 +123,7 @@ function getTexte(name)
 					solution[b] = solution[b].toUpperCase();
 				}
 			}
-			//--- SI ORDRE QUESTION-REPONSE PAS UTILE ON NE TRIE PLUS LES TABLEAUX 	MAIS ON FAIT UN TRUC COMPLIQUE QUI MARCHE PAR MIRACLE
+			//--- SI EL ORDEN PREGUNTA-RESPUESTA NO ES ÚTIL, YA NO SE CLASIFICAN LAS TABLAS, SINO QUE SE HACE ALGO COMPLICADO QUE FUNCIONA POR MILAGRO
 			if (ordre != 1)
 			{	
 				for (var a = 0; a < reponse.length; a++)
@@ -158,7 +159,7 @@ function getTexte(name)
 			}
 					
 			
-			//--- ON TESTE CHAQUE ENTREE DU TABLEAU - SI PAS EQUIVALENT ON MET 'FAUX' A 1 - TOUJOURS VRAI MAIS SI ORDRE A 1
+			//--- Se prueba cada entrada de la tabla; si no es equivalente, se establece en 'falso'; la condición es siempre verdadera, a menos que el orden sea 1.
 			
 			else{
 			for (var a = 0; a < solution.length; a++)
@@ -184,7 +185,7 @@ function getTexte(name)
 				}
 			}
 			}
-			//--- SI FAUX =1 ALORS ON AFFICHE L'OBJET ERREUR- SINON MESSAGE OK	
+			//--- SI FALSO = 1, ENTONCES SE MUESTRA EL OBJETO ERROR; SI NO, MENSAJE OK	
 			if (unefois == 1)
 		{
 		sessionStorage.setItem(resultat,faux);

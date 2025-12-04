@@ -4,8 +4,7 @@
     background-color: black;
     color: white;
   ">
-  INITIALISATION-COUISE V2.4<br />(Numérote les champs et vide les champs
-  réponses en VISUALISATION uniquement)
+  INITIALISATION-COUISE V2.4<br />(Numera los campos y vacía los campos de respuesta SOLAMENTE en VISUALIZACIÓN)
 </div>
 <script>
   setTimeout(function () {
@@ -19,13 +18,13 @@
         });
     }
     // Lo oculta al inicio
-    setTimeout(hideGeniallyOverlay, 10);
+    setTimeout(hideGeniallyOverlay, 15);
     // Observa el DOM y lo vuelve a ocultar si aparece otra vez solo si genially lo coloca automaticamente
     const observer = new MutationObserver(hideGeniallyOverlay);
     observer.observe(document.body, { childList: true, subtree: true });
-  }, 10);
+  }, 15);
 
-  // auto-incrémente les champs réponses
+  //Autoincrementar los campos de respuesta
   var champ = document.querySelectorAll(".question");
   for (var i = 0; i < champ.length; i++) {
     var ref = "q" + (i + 1);
@@ -36,7 +35,7 @@
 
   var url = window.location.pathname.split("/");
   var refgenial = url[1];
-  // affiche Q1 Q2 etc en edition et prévisualisation
+  //Mostrar Q1, Q2, etc., en edición y previsualización
   if (refgenial != "editor" && refgenial != "Preview") {
     for (var i = 0; i < champ.length; i++) {
       champ[i].setAttribute("value", "");
