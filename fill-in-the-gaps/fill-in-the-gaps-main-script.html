@@ -6,176 +6,228 @@
   ">
   INITIALISATION-COUISE V2.4<br />(Numera los campos y vacía los campos de respuesta SOLAMENTE en VISUALIZACIÓN)
 </div>
+
 <script>
-  setTimeout(function () {
-    // Evita que Genially oscurezca la pantalla con el modal
-    function hideGeniallyOverlay() {
+  /* --------------------------------------------------------------
+     PLUGIN “FILL‑IN‑THE‑GAPS”
+     - Oculta los modales de Genially que oscurecen la pantalla.
+     - Autoincrementa los campos de respuesta.
+     - Gestiona la visibilidad de los mensajes de error/éxito.
+     - Usa const/let, arrow functions y funciones reutilizables.
+     -------------------------------------------------------------- */
+
+  // 1. Ocultar overlay de Genially al inicio
+  setTimeout(() => {
+    const hideGeniallyOverlay = () => {
       document.querySelectorAll('.ReactModalPortal, .ReactModal__Overlay')
-        .forEach(function (el) {
+        .forEach(el => {
           el.style.display = 'none';
           el.style.opacity = '0';
           el.style.pointerEvents = 'none';
         });
-    }
-    // Lo oculta al inicio
-    setTimeout(hideGeniallyOverlay, 15);
-    // Observa el DOM y lo vuelve a ocultar si aparece otra vez solo si genially lo coloca automaticamente
+    };
+
+    hideGeniallyOverlay();
     const observer = new MutationObserver(hideGeniallyOverlay);
     observer.observe(document.body, { childList: true, subtree: true });
   }, 15);
 
-  //Autoincrementar los campos de respuesta
-  var champ = document.querySelectorAll(".question");
-  for (var i = 0; i < champ.length; i++) {
-    var ref = "q" + (i + 1);
-    champ[i].setAttribute("value", ref);
-    champ[i].setAttribute("id", ref);
-    champ[i].setAttribute("name", ref);
+  // 2. Autoincrementar campos de respuesta (.question)
+  const questions = document.querySelectorAll(".question");
+  questions.forEach((q, i) => {
+    const ref = "q" + (i + 1);
+    q.setAttribute("value", ref);
+    q.setAttribute("id", ref);
+    q.setAttribute("name", ref);
+  });
+
+  // 3. Lógica principal (solo en visualización, no en editor)
+  const urlParts = window.location.pathname.split("/");
+  const refGenially = urlParts[1];
+
+  // Limpiar valores en visualización
+  if (refGenially !== "editor" && refGenially !== "Preview") {
+    questions.forEach(q => q.setAttribute("value", ""));
   }
 
-  var url = window.location.pathname.split("/");
-  var refgenial = url[1];
-  //Mostrar Q1, Q2, etc., en edición y previsualización
-  if (refgenial != "editor" && refgenial != "Preview") {
-    for (var i = 0; i < champ.length; i++) {
-      champ[i].setAttribute("value", "");
-    }
-  }
-  //
-  if (refgenial != "editor") {
-    document.getElementById("INITcouise").style.display = "none";
-    if (document.getElementById("boncouise")) {
-      document.getElementById("boncouise").style.display = "none";
-    }
-    if (document.getElementById("erreurcouise")) {
-      document.getElementById("erreurcouise").style.display = "none";
-    }
-    if (document.getElementById("masquecouise")) {
-      document.getElementById("masquecouise").style.display = "none";
-    }
-    if (document.getElementById("tentativecouise")) {
-      document.getElementById("tentativecouise").style.display = "none";
-    }
-    function getParentElt(nombre) {
-      var pnode = elt[nombre].parentNode.parentNode.parentNode;
-      while (pnode.getAttribute("id") == null) {
+  if (refGenially !== "editor") {
+    // Ocultar elementos de inicialización y feedback al arrancar
+    const hideElement = (id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    };
+
+    hideElement("INITcouise");
+    hideElement("boncouise");
+    hideElement("erreurcouise");
+    hideElement("masquecouise");
+    hideElement("tentativecouise");
+
+    // Helper para encontrar el contenedor padre (lógica original preservada)
+    const findParentContainer = (element) => {
+      if (!element) return null;
+      let pnode = element.parentNode.parentNode.parentNode;
+      while (pnode && pnode.getAttribute("id") == null) {
         pnode = pnode.parentNode;
       }
-      pnode = pnode.parentNode.parentNode;
-      return pnode;
-    }
-    var elt = document.querySelectorAll(".boncouise");
-    for (var i = 0; i < elt.length; i++) {
-      elt[i].style.display = "none";
-    }
-    var elt = document.querySelectorAll(".erreurcouise");
-    for (var i = 0; i < elt.length; i++) {
-      elt[i].style.display = "none";
-    }
-    var elt = document.querySelectorAll(".masquecouise");
-    for (var i = 0; i < elt.length; i++) {
-      elt[i].style.display = "none";
+      return pnode ? pnode.parentNode.parentNode : null;
+    };
+
+    // Helper para obtener el contenedor por ID
+    const getParentById = (id) => {
+      const el = document.getElementById(id);
+      return findParentContainer(el);
+    };
+
+    // Helper para obtener el contenedor de un elemento en una lista
+    const getParentFromList = (list, index) => {
+      return findParentContainer(list[index]);
+    };
+
+    // Ocultar grupos de elementos (.boncouise, .erreurcouise, etc.)
+    const hideGroup = (className) => {
+      const elements = document.querySelectorAll("." + className);
+      elements.forEach(el => {
+        const parent = findParentContainer(el);
+        if (parent) parent.style.display = "none";
+      });
+    };
+
+    hideGroup("boncouise");
+    hideGroup("erreurcouise");
+    hideGroup("masquecouise");
+
+    // Helper para obtener el texto dentro de un contenedor
+    const getTexte = (name) => {
+      const pnode = getParentById(name);
+      if (!pnode) return null;
+
+      if (pnode.querySelector("font")) {
+        return pnode.querySelector("font");
+      } else if (pnode.querySelector(".genially-view-text div")) {
+        return pnode.querySelector(".genially-view-text div");
+      } else {
+        return pnode.querySelector(".genially-view-text");
+      }
+    };
+
+    // Ocultar contenedores padres específicos si existen
+    if (document.getElementById("boncouise")) getParentById("boncouise").style.display = "none";
+    if (document.getElementById("erreurcouise")) getParentById("erreurcouise").style.display = "none";
+
+    // Gestión de estado (intentos y resultados)
+    const initWidget = document.getElementById("INITcouise");
+    // Subir niveles desde INITcouise para encontrar el ID de la página
+    const refParentPage = initWidget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+    const refPageId = refParentPage.getAttribute("id");
+
+    const storageKey = "fois" + refPageId;
+    const blockKey = "bloc" + refPageId;
+    const resultKey = "faux" + refPageId;
+
+    // Inicializar contador de intentos
+    if (sessionStorage.getItem(blockKey) != 1) {
+      sessionStorage.setItem(storageKey, 0);
     }
 
-    function getParent(name) {
-      var pnode =
-        document.getElementById(name).parentNode.parentNode.parentNode;
-      while (pnode.getAttribute("id") == null) {
-        pnode = pnode.parentNode;
-      }
-      pnode = pnode.parentNode.parentNode;
-      return pnode;
-    }
-    function getTexte(name) {
-      var pnode = getParent(name);
-      if (pnode.querySelector("font") != null) {
-        var lastDiv = pnode.querySelector("font");
-      } else if (
-        pnode.querySelector(".genially-view-text").querySelector("div") != null
-      ) {
-        var lastDiv = pnode
-          .querySelector(".genially-view-text")
-          .querySelector("div");
-      } else {
-        var lastDiv = pnode.querySelector(".genially-view-text");
-      }
-      return lastDiv;
-    }
-    if (document.getElementById("boncouise")) {
-      getParent("boncouise").style.display = "none";
-    }
-    if (document.getElementById("erreurcouise")) {
-      getParent("erreurcouise").style.display = "none";
-    }
-    var elt = document.querySelectorAll(".boncouise");
-    for (var i = 0; i < elt.length; i++) {
-      getParentElt(i).style.display = "none";
-    }
-    var elt = document.querySelectorAll(".erreurcouise");
-    for (var i = 0; i < elt.length; i++) {
-      getParentElt(i).style.display = "none";
-    }
-    var refparent =
-      document.getElementById("INITcouise").parentNode.parentNode.parentNode
-        .parentNode.parentNode.parentNode;
-    var refpage = refparent.getAttribute("id");
-    var stockage = "fois" + refpage;
-    var blocage = "bloc" + refpage;
-    var resultat = "faux" + refpage;
-    if (sessionStorage.getItem(blocage) != 1) {
-      sessionStorage.setItem(stockage, 0);
-    }
+    // Mostrar intentos si existe el elemento
     if (document.getElementById("tentativecouise")) {
-      getTexte("tentativecouise").innerHTML = sessionStorage.getItem(stockage);
+      const textEl = getTexte("tentativecouise");
+      if (textEl) textEl.innerHTML = sessionStorage.getItem(storageKey);
     }
-    if (sessionStorage.getItem(resultat) != null) {
-      var faux = sessionStorage.getItem(resultat);
 
-      if (faux == 1) {
-        var elt = document.querySelectorAll(".boncouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "none";
+    // Restaurar estado de acierto/fallo si existe
+    if (sessionStorage.getItem(resultKey) != null) {
+      const isFalse = sessionStorage.getItem(resultKey) == 1;
+
+      // Helpers para mostrar/ocultar grupos
+      const toggleGroupDisplay = (className, show) => {
+        const elements = document.querySelectorAll("." + className);
+        elements.forEach(el => {
+          const parent = findParentContainer(el);
+          if (parent) parent.style.display = show ? "block" : "none";
+        });
+      };
+
+      const toggleElementDisplay = (id, show) => {
+        const el = document.getElementById(id);
+        if (el) {
+          const parent = getParentById(id);
+          if (parent) parent.style.display = show ? "block" : "none";
         }
-        var elt = document.querySelectorAll(".erreurcouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "block";
-        }
-        var elt = document.querySelectorAll(".masquecouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "block";
-        }
-        if (document.getElementById("erreurcouise")) {
-          getParent("erreurcouise").style.display = "block";
-        }
-        if (document.getElementById("boncouise")) {
-          getParent("boncouise").style.display = "none";
-        }
-        if (document.getElementById("masquecouise")) {
-          getParent("masquecouise").style.display = "block";
-        }
+      };
+
+      if (isFalse) {
+        // Fallo: Ocultar BON, Mostrar ERREUR y MASQUE
+        toggleGroupDisplay("boncouise", false);
+        toggleGroupDisplay("erreurcouise", true);
+        toggleGroupDisplay("masquecouise", true);
+
+        toggleElementDisplay("erreurcouise", true);
+        toggleElementDisplay("boncouise", false);
+        toggleElementDisplay("masquecouise", true);
       } else {
-        var elt = document.querySelectorAll(".boncouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "block";
-        }
-        var elt = document.querySelectorAll(".erreurcouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "none";
-        }
-        var elt = document.querySelectorAll(".masquecouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "none";
-        }
-        if (document.getElementById("boncouise")) {
-          getParent("boncouise").style.display = "block";
-        }
-        if (document.getElementById("erreurcouise")) {
-          getParent("erreurcouise").style.display = "none";
-        }
-        if (document.getElementById("masquecouise")) {
-          getParent("masquecouise").style.display = "none";
-        }
+        // Acierto: Mostrar BON, Ocultar ERREUR y MASQUE
+        toggleGroupDisplay("boncouise", true);
+        toggleGroupDisplay("erreurcouise", false);
+        toggleGroupDisplay("masquecouise", false);
+
+        toggleElementDisplay("boncouise", true);
+        toggleElementDisplay("erreurcouise", false);
+        toggleElementDisplay("masquecouise", false);
       }
     }
   }
+
+  /* ---------- 4. Funciones de Feedback Visual (Tooltip) ---------- */
+  window.showCharFeedback = (inputId, userVal, correctVal) => {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    window.removeCharFeedback(inputId);
+
+    const feedback = document.createElement('div');
+    feedback.id = `${inputId}-feedback`;
+    Object.assign(feedback.style, {
+      position: 'absolute',
+      marginTop: '5px',
+      padding: '4px 8px',
+      background: '#fff',
+      border: '1px solid #e74c3c',
+      borderRadius: '4px',
+      zIndex: '10000',
+      fontSize: '14px',
+      fontFamily: 'monospace',
+      pointerEvents: 'none',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+      whiteSpace: 'nowrap',
+      color: '#333'
+    });
+
+    const rect = input.getBoundingClientRect();
+    document.body.appendChild(feedback);
+    feedback.style.top = `${rect.bottom + window.scrollY}px`;
+    feedback.style.left = `${rect.left + window.scrollX}px`;
+
+    const primaryCorrect = correctVal.split('|')[0];
+    let html = '';
+    const maxLen = Math.max(userVal.length, primaryCorrect.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      const u = userVal[i] || '';
+      const c = primaryCorrect[i] || '';
+
+      if (u.toLowerCase() === c.toLowerCase()) {
+        html += `<span style="color:#27ae60; font-weight:bold">${u}</span>`;
+      } else {
+        html += u ? `<span style="background:#fadbd8; color:#c0392b; text-decoration:line-through">${u}</span>` : `<span style="color:#ccc">_</span>`;
+      }
+    }
+    feedback.innerHTML = html;
+  };
+
+  window.removeCharFeedback = (inputId) => {
+    const el = document.getElementById(`${inputId}-feedback`);
+    if (el) el.remove();
+  };
 </script>

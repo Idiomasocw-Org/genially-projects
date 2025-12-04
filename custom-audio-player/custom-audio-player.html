@@ -1,17 +1,69 @@
 <div id="custom-audio-player"
-  style="color:black; background-color:#5ce233; text-align:center; font-weight:normal; font-size:16px; width:100%; height:100%;">
-  Custom audio-player</div>
+  style="color:black; background-color:#D5B9B2; text-align:center; font-weight:normal; font-size:16px; width:100%; height:100%;">
+  Custom audio-player
+</div>
+
 <style>
+  /* Color de fondo por defecto del reproductor (puedes cambiar el valor HEX entre los signos # y !). */
   .widget-audio-player {
     background-color: #5647ff !important;
   }
-
-  /* Replace the value between the pound sign and the exclamation mark with the desired background color. */
 </style>
+
 <script>
-  var url = window.location.pathname.split("/");
-  var refgenial = url[1];
-  if (refgenial != "editor") {
-    document.getElementById('custom-audio-player').style.display = 'none';
+  /* --------------------------------------------------------------
+     PLUGIN CUSTOM AUDIO PLAYER
+     • Oculta el widget cuando la presentación está en modo "presentación"
+     • Lee el color de fondo definido en la hoja de estilos y lo aplica
+       a todos los reproductores con la clase .widget-audio-player
+     • Código escrito con const/let y arrow functions para mayor claridad
+     -------------------------------------------------------------- */
+
+  // --------------------------------------------------------------
+  // 1️⃣ Ocultar el widget en modo presentación (no editor)
+  // --------------------------------------------------------------
+  const urlParts = window.location.pathname.split('/')
+  const refGenially = urlParts[1]
+  if (refGenially !== 'editor') {
+    const widget = document.getElementById('custom-audio-player')
+    if (widget) widget.style.display = 'none'
   }
+
+  // --------------------------------------------------------------
+  // 2️⃣ Función que extrae el color de fondo del CSS
+  // --------------------------------------------------------------
+  const getBackgroundColor = () => {
+    // Busca el primer <style> que contenga la regla .widget-audio-player
+    const styleEl = document.querySelector('style')
+    if (!styleEl) return null
+
+    const css = styleEl.textContent || styleEl.innerText
+    // Expresión regular que captura el valor HEX después de "background-color"
+    const match = css.match(/background-color\s*:\s*(#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3})\s*!/i)
+    return match ? match[1] : null
+  }
+
+  // --------------------------------------------------------------
+  // 3️⃣ Aplicar el color encontrado a los reproductores
+  // --------------------------------------------------------------
+  const applyCustomColor = () => {
+    const bgColor = getBackgroundColor()
+    if (!bgColor) {
+      console.warn('⚠️ No se encontró color de fondo en el CSS')
+      return
+    }
+    console.log('🎨 Color detectado:', bgColor)
+
+    const players = document.querySelectorAll('.widget-audio-player')
+    console.log('📻 Reproductores encontrados:', players.length)
+    players.forEach(player => {
+      player.style.setProperty('background-color', bgColor, 'important')
+      player.style.setProperty('background', bgColor, 'important')
+    })
+  }
+
+  // --------------------------------------------------------------
+  // 4️⃣ Ejecutar la aplicación después de que Genially haya cargado los elementos
+  // --------------------------------------------------------------
+  setTimeout(applyCustomColor, 500) // 500 ms es suficiente en la mayoría de los casos
 </script>
