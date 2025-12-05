@@ -1,198 +1,181 @@
+<!-- 
+  🎵 GUÍA DE USO - AUDIO COLOR WIDGET (V12) 🎵
+  ---------------------------------------------
+  1. Copia todo este código en un elemento 'Insertar > Otros' en Genially.
+  2. Coloca tu AUDIO normal de Genially en la página.
+  3. Dibuja 4 FIGURAS (ej. cuadrados) con los colores que desees.
+  4. Colócalas en orden de IZQUIERDA a DERECHA visualmente:
+       [1º Fondo]   [2º Botón Play]   [3º Barra Progreso]   [4º Texto/Números]
+  5. Selecciona TODO JUNTO:
+       (Este Widget + Tu Audio + Las 4 Figuras)
+  6. AGRÚPALO (Botón Agrupar o Ctrl + G).
+  
+  * El widget es invisible en previsualización.
+  * Los colores se detectan automáticamente.
+-->
 <div id="custom-audio-player"
-  style="color:black; background-color:#D5B9B2; text-align:center; font-weight:normal; font-size:16px; width:100%; height:100%;">
-  Custom audio-player
+  style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
+  <span style="font-family:sans-serif; font-size:11px; color:#555; opacity:0.6; user-select:none;">
+    Audio Color Widget
+  </span>
 </div>
 
 <style>
-  /* Color de fondo por defecto del reproductor (puedes cambiar el valor HEX entre los signos # y !). */
-  .widget-audio-player {
-    background-color: #5647ff !important;
+  .widget-audio-player-customized * {
+    transition: all 0.3s ease;
   }
 </style>
 
 <script>
   /* --------------------------------------------------------------
-     PLUGIN CUSTOM AUDIO PLAYER V2.0 - PERSONALIZACIÓN AVANZADA
-     • Oculta el widget cuando la presentación está en modo "presentación"
-     • Permite personalizar múltiples aspectos visuales mediante atributos data-*:
-       - data-audio-bg-color: Color de fondo del reproductor
-       - data-audio-button-color: Color de los botones (play, pause, etc.)
-       - data-audio-progress-color: Color de la barra de progreso
-       - data-audio-text-color: Color del texto e iconos
-     • Mantiene compatibilidad con el método anterior (CSS)
-     • Los atributos data-* tienen prioridad sobre los estilos CSS
+     PLUGIN CUSTOM AUDIO PLAYER V12.0 - INVISIBLE SCAN
      -------------------------------------------------------------- */
-
-  // --------------------------------------------------------------
-  // 1️⃣ Ocultar el widget en modo presentación (no editor)
-  // --------------------------------------------------------------
-  const urlParts = window.location.pathname.split('/')
-  const refGenially = urlParts[1]
-  if (refGenially !== 'editor') {
-    const widget = document.getElementById('custom-audio-player')
-    if (widget) widget.style.display = 'none'
-  }
-
-  // --------------------------------------------------------------
-  // 2️⃣ Función que extrae el color de fondo del CSS (método legacy)
-  // --------------------------------------------------------------
-  const getBackgroundColor = () => {
-    const styleEl = document.querySelector('style')
-    if (!styleEl) return null
-
-    const css = styleEl.textContent || styleEl.innerText
-    const match = css.match(/background-color\s*:\s*(#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3})\s*!/i)
-    return match ? match[1] : null
-  }
-
-  // --------------------------------------------------------------
-  // 3️⃣ Buscar el widget iniciador y extraer colores personalizados
-  // --------------------------------------------------------------
-  const getCustomColors = () => {
-    // Buscar elemento con id que comience con "custom-audio-player"
-    const initWidget = document.querySelector('[id^="custom-audio-player"]')
-
-    if (!initWidget) {
-      console.log('📻 [AUDIO] No se encontró widget iniciador, usando CSS por defecto')
-      return null
+  (function () {
+    // Ocultar siempre en previsualización/view
+    if (window.location.pathname.split('/')[1] !== 'editor') {
+      document.querySelectorAll('[id^="custom-audio-player"]').forEach(w => w.style.display = 'none');
     }
 
-    // Extraer atributos data-*
-    const bgColor = initWidget.getAttribute('data-audio-bg-color')
-    const buttonColor = initWidget.getAttribute('data-audio-button-color')
-    const progressColor = initWidget.getAttribute('data-audio-progress-color')
-    const textColor = initWidget.getAttribute('data-audio-text-color')
+    const log = (msg) => console.log(`[AUDIO V12] ${msg}`);
 
-    // Si hay al menos un atributo, devolver objeto de configuración
-    if (bgColor || buttonColor || progressColor || textColor) {
-      console.log('🎨 [AUDIO] Colores personalizados detectados:', {
-        fondo: bgColor || 'default',
-        botones: buttonColor || 'default',
-        progreso: progressColor || 'default',
-        texto: textColor || 'default'
-      })
+    const extractColor = (el) => {
+      if (!el) return null;
+      const tag = el.tagName.toUpperCase();
 
-      return {
-        background: bgColor,
-        button: buttonColor,
-        progress: progressColor,
-        text: textColor
+      // 🚫 REGLA DE ORO: Ignorar contenedores SVG, solo leer sus hijos (rect, path)
+      if (tag === 'SVG') return null;
+
+      const style = window.getComputedStyle(el);
+      const ignore = ['rgba(0, 0, 0, 0)', 'transparent', 'none', 'currentColor', 'inherit'];
+
+      // 1. Fill (Solo elementos de dibujo)
+      if (['PATH', 'RECT', 'CIRCLE', 'ELLIPSE', 'POLYGON'].includes(tag)) {
+        const fill = el.getAttribute('fill') || style.fill;
+        if (fill && !ignore.includes(fill)) return fill;
       }
-    }
 
-    return null
-  }
-
-  // --------------------------------------------------------------
-  // 4️⃣ Aplicar estilos personalizados a los reproductores
-  // --------------------------------------------------------------
-  const applyCustomStyles = () => {
-    const customColors = getCustomColors()
-    const players = document.querySelectorAll('.widget-audio-player')
-
-    console.log('📻 [AUDIO] Reproductores encontrados:', players.length)
-
-    if (players.length === 0) {
-      console.warn('⚠️ [AUDIO] No se encontraron reproductores')
-      return
-    }
-
-    players.forEach((player, index) => {
-      console.log(`🎵 [AUDIO] Aplicando estilos al reproductor #${index + 1}`)
-
-      // Si hay colores personalizados, usarlos
-      if (customColors) {
-        // Color de fondo del reproductor
-        if (customColors.background) {
-          player.style.setProperty('background-color', customColors.background, 'important')
-          player.style.setProperty('background', customColors.background, 'important')
-        }
-
-        // Color de los botones (play, pause, etc.)
-        if (customColors.button) {
-          const buttons = player.querySelectorAll('button, .audio-button, [class*="button"]')
-          buttons.forEach(btn => {
-            btn.style.setProperty('background-color', customColors.button, 'important')
-            btn.style.setProperty('color', customColors.text || '#ffffff', 'important')
-          })
-
-          // También aplicar a los iconos SVG dentro de botones
-          const svgIcons = player.querySelectorAll('button svg, .audio-button svg')
-          svgIcons.forEach(svg => {
-            svg.style.setProperty('fill', customColors.text || '#ffffff', 'important')
-          })
-        }
-
-        // Color de la barra de progreso
-        if (customColors.progress) {
-          const progressBars = player.querySelectorAll(
-            'progress, .audio-progress, [class*="progress"], input[type="range"]'
-          )
-          progressBars.forEach(bar => {
-            // Para barras de progreso estándar
-            bar.style.setProperty('accent-color', customColors.progress, 'important')
-
-            // Para elementos personalizados
-            bar.style.setProperty('background-color', customColors.progress, 'important')
-          })
-
-          // Estilos específicos para el fill de la barra de progreso
-          const progressFills = player.querySelectorAll(
-            '.audio-progress-fill, [class*="progress-fill"], [class*="progress-bar"]'
-          )
-          progressFills.forEach(fill => {
-            fill.style.setProperty('background-color', customColors.progress, 'important')
-          })
-        }
-
-        // Color del texto e iconos
-        if (customColors.text) {
-          player.style.setProperty('color', customColors.text, 'important')
-
-          // Aplicar a spans, divs de texto, etc.
-          const textElements = player.querySelectorAll('span, div, p, time')
-          textElements.forEach(el => {
-            el.style.setProperty('color', customColors.text, 'important')
-          })
-
-          // Aplicar a iconos SVG
-          const svgs = player.querySelectorAll('svg')
-          svgs.forEach(svg => {
-            svg.style.setProperty('fill', customColors.text, 'important')
-          })
-        }
-
-      } else {
-        // Método legacy: usar color del CSS
-        const bgColor = getBackgroundColor()
-        if (bgColor) {
-          console.log('🎨 [AUDIO] Usando color CSS legacy:', bgColor)
-          player.style.setProperty('background-color', bgColor, 'important')
-          player.style.setProperty('background', bgColor, 'important')
-        } else {
-          console.warn('⚠️ [AUDIO] No se encontró configuración de color')
-        }
+      // 2. Background
+      const bg = style.backgroundColor;
+      if (bg && !ignore.includes(bg)) {
+        if (tag === 'DIV' && !el.className && bg === 'rgb(0, 0, 0)') return null; // Ignorar divs genéricos negros
+        return bg;
       }
-    })
 
-    console.log('✅ [AUDIO] Estilos aplicados correctamente')
-  }
+      return null;
+    };
 
-  // --------------------------------------------------------------
-  // 5️⃣ Ejecutar la aplicación después de que Genially haya cargado
-  // --------------------------------------------------------------
-  setTimeout(applyCustomStyles, 500)
+    const applyStyles = (player, colors) => {
+      if (!player) return;
+      player.classList.add('widget-audio-player-customized');
+      player.setAttribute('data-custom-initialized', 'true');
 
-  // Observar cambios en el DOM por si se agregan reproductores dinámicamente
-  const observer = new MutationObserver(() => {
-    const players = document.querySelectorAll('.widget-audio-player')
-    if (players.length > 0) {
-      applyCustomStyles()
-    }
-  })
+      const getC = (i) => colors[i] || colors[colors.length - 1];
 
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  })
+      // 1. Fondo
+      if (colors.length > 0) {
+        player.style.setProperty('background-color', getC(0), 'important');
+        player.style.setProperty('background', getC(0), 'important');
+      }
+      // 2. Botones
+      if (colors.length > 1) {
+        const cBtn = getC(1);
+        const cTxt = colors.length > 3 ? getC(3) : '#fff';
+        player.querySelectorAll('button, .audio-button, div[role="button"]').forEach(b => {
+          b.style.setProperty('background-color', cBtn, 'important');
+          b.style.setProperty('color', cTxt, 'important');
+          b.querySelectorAll('svg, path').forEach(i => i.style.setProperty('fill', cTxt, 'important'));
+        });
+      }
+      // 3. Barra
+      if (colors.length > 2) {
+        const cProg = getC(2);
+        player.querySelectorAll('input[type="range"], progress').forEach(b => {
+          b.style.setProperty('accent-color', cProg, 'important');
+          b.style.setProperty('color', cProg, 'important');
+        });
+        const uid = 's-' + Math.random().toString(36).slice(2);
+        player.setAttribute('data-sid', uid);
+        const st = document.createElement('style');
+        st.innerHTML = `
+          [data-sid="${uid}"] input[type="range"]::-webkit-slider-thumb { background: ${cProg} !important; }
+          [data-sid="${uid}"] .audio-progress-fill { background-color: ${cProg} !important; }
+        `;
+        document.head.appendChild(st);
+      }
+      // 4. Texto
+      if (colors.length > 3) {
+        const cTx = getC(3);
+        player.style.setProperty('color', cTx, 'important');
+        player.querySelectorAll('*:not(button *)').forEach(el => el.style.setProperty('color', cTx, 'important'));
+        player.querySelectorAll('svg:not(button svg)').forEach(s => s.style.setProperty('fill', cTx, 'important'));
+      }
+    };
+
+    const init = () => {
+      const configs = document.querySelectorAll('[id^="custom-audio-player"]');
+
+      configs.forEach(config => {
+        let wrapper = config;
+        while (wrapper.parentElement && wrapper.parentElement.tagName !== 'BODY' && !wrapper.parentElement.classList.contains('genially-view-item')) {
+          wrapper = wrapper.parentElement;
+        }
+
+        let parent = config.parentNode;
+        let group = null;
+        let audio = null;
+
+        for (let i = 0; i < 20; i++) {
+          if (!parent || parent.tagName === 'BODY') break;
+          const foundAudio = parent.querySelector('.widget-audio-player');
+          if (foundAudio) {
+            audio = foundAudio;
+            group = parent;
+            break;
+          }
+          parent = parent.parentNode;
+        }
+
+        if (group && audio) {
+          const allNodes = Array.from(group.querySelectorAll('*'));
+          let visualObjects = [];
+
+          allNodes.forEach(node => {
+            if (audio.contains(node)) return;
+            if (config.contains(node) || node === config) return;
+            if (wrapper.contains(node) || node === wrapper) return;
+            if (['SCRIPT', 'STYLE', 'LINK', 'META', 'HEAD'].includes(node.tagName)) return;
+
+            const color = extractColor(node);
+            if (color) {
+              const rect = node.getBoundingClientRect();
+              if (rect.width > 2 && rect.height > 2) {
+                visualObjects.push({
+                  color: color,
+                  x: rect.left
+                });
+              }
+            }
+          });
+
+          visualObjects.sort((a, b) => a.x - b.x);
+
+          let palette = [];
+          visualObjects.forEach(obj => {
+            if (palette.length === 0 || palette[palette.length - 1] !== obj.color) {
+              palette.push(obj.color);
+            }
+          });
+
+          palette = [...new Set(palette)];
+
+          if (palette.length > 0) {
+            applyStyles(audio, palette);
+          }
+        }
+      });
+    };
+
+    setTimeout(init, 500);
+    setInterval(init, 3000);
+  })();
 </script>
