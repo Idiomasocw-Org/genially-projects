@@ -1,126 +1,190 @@
-    <!-- BOTÓN DE LIMPIEZA (Solo funciona con data-persist="true") -->
+<!-- BOTÓN DE LIMPIEZA V2.0 - ROBUSTO (Solo funciona con data-persist="true") -->
 
-    <style>
-        .clear-btn-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            height: 100%;
+<style>
+    .clear-btn-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    .clear-btn {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: 'Source Sans Pro', sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+    }
+
+    .clear-btn:hover {
+        background-color: #c0392b;
+        box-shadow: 0 3px 8px rgba(231, 76, 60, 0.4);
+        transform: translateY(-1px);
+    }
+
+    .clear-btn:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 3px rgba(231, 76, 60, 0.3);
+    }
+
+    .clear-btn:disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+    }
+</style>
+
+<div class="clear-btn-container">
+    <button id="clear-btn-hybrid" class="clear-btn">
+        🗑️ Limpiar Respuestas
+    </button>
+</div>
+
+<script>
+    /* --------------------------------------------------------------
+       CLEAR BUTTON V2.0 - LIMPIEZA ROBUSTA DE SESSIONSTORAGE
+       • Limpia TODAS las variantes de claves relacionadas con la actividad
+       • Resetea inputs, feedback visual y estado de validación
+       • Solo funciona cuando data-persist="true"
+       -------------------------------------------------------------- */
+
+    (function () {
+        const btn = document.getElementById('clear-btn-hybrid');
+        const uniqueId = 'clear-btn-' + Math.random().toString(36).substr(2, 9);
+        btn.id = uniqueId;
+
+        // ======================================================
+        // 1️⃣ Verificar que la persistencia esté activada
+        // ======================================================
+        function checkPersistenceEnabled() {
+            const initWidget = document.querySelector('[id^="INITcouise"][data-persist="true"]');
+            return initWidget !== null;
         }
 
-        .clear-btn {
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: 'Source Sans Pro', sans-serif;
-            font-size: 14px;
-            transition: background-color 0.2s;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        // Deshabilitar botón si no hay persistencia
+        if (!checkPersistenceEnabled()) {
+            btn.disabled = true;
+            btn.title = "Este botón solo funciona con data-persist='true'";
+            btn.textContent = '🔒 Limpieza deshabilitada';
+            console.log('[CLEAR-BUTTON] Botón deshabilitado - persistencia no activada');
+            return;
         }
 
-        .clear-btn:hover {
-            background-color: #c0392b;
-        }
+        // ======================================================
+        // 2️⃣ Función de limpieza robusta
+        // ======================================================
+        btn.addEventListener('click', () => {
+            let actId = window.lastInteractedActivity || window.currentActivityId;
 
-        .clear-btn:active {
-            transform: translateY(1px);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
+            const manualId = ""; // Opcional: forzar un ID específico
+            if (manualId) actId = manualId;
 
-        .clear-btn:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-    </style>
-
-    <div class="clear-btn-container">
-        <button id="clear-btn-hybrid" class="clear-btn">
-            Limpiar Respuestas
-        </button>
-    </div>
-
-    <script>
-        (function () {
-            const btn = document.getElementById('clear-btn-hybrid');
-            const uniqueId = 'clear-btn-' + Math.random().toString(36).substr(2, 9);
-            btn.id = uniqueId;
-
-            // Verificar que la persistencia esté activada
-            function checkPersistenceEnabled() {
-                const initWidget = document.querySelector('[id^="INITcouise"][data-persist="true"]');
-                return initWidget !== null;
-            }
-
-            // Deshabilitar botón si no hay persistencia
-            if (!checkPersistenceEnabled()) {
-                btn.disabled = true;
-                btn.title = "Este botón solo funciona con data-persist='true'";
-                console.log('[CLEAR-BUTTON] Botón deshabilitado - persistencia no activada');
+            if (!actId) {
+                alert("⚠️ No se encontró la actividad para limpiar.");
+                console.error('[CLEAR-BUTTON] No se pudo determinar el ID de actividad');
                 return;
             }
 
-            btn.addEventListener('click', () => {
-                let actId = window.lastInteractedActivity || window.currentActivityId;
+            if (confirm(`¿Estás seguro de que quieres borrar tus respuestas y reiniciar la actividad "${actId}"?`)) {
+                console.log(`[CLEAR-BUTTON] 🧹 Iniciando limpieza de actividad: ${actId}`);
 
-                const manualId = ""; // Opcional: forzar un ID específico
-                if (manualId) actId = manualId;
+                let cleanedCount = 0;
 
-                if (!actId) {
-                    alert("No se encontró la actividad para limpiar.");
-                    return;
+                // ================================================
+                // A) Limpiar claves con prefijo de actividad
+                // ================================================
+                const keysToRemove = [];
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    // Claves tipo: act1_intentos, act1_bloqueado, act1_resultado, act1_estado
+                    if (key && key.startsWith(actId + '_')) {
+                        keysToRemove.push(key);
+                    }
                 }
 
-                if (confirm("¿Estás seguro de que quieres borrar tus respuestas y reiniciar esta actividad?")) {
-                    console.log(`[CLEAR-BUTTON] Limpiando actividad: ${actId}`);
+                keysToRemove.forEach(k => {
+                    sessionStorage.removeItem(k);
+                    console.log(`[CLEAR-BUTTON]   ✓ Borrado: ${k}`);
+                });
+                cleanedCount += keysToRemove.length;
 
-                    // Borrar claves de sessionStorage
-                    const keysToRemove = [];
-                    for (let i = 0; i < sessionStorage.length; i++) {
-                        const key = sessionStorage.key(i);
-                        if (key && key.startsWith(actId + '_')) {
-                            keysToRemove.push(key);
+                // ================================================
+                // B) Limpiar respuestas guardadas (IDs únicos y simples)
+                // ================================================
+                const inputs = document.querySelectorAll(`input[data-activity-id="${actId}"]`);
+                console.log(`[CLEAR-BUTTON] 📝 Encontrados ${inputs.length} campos de entrada`);
+
+                inputs.forEach((input, index) => {
+                    // Limpiar valor visual
+                    input.value = "";
+                    input.setAttribute("value", "");
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.style.color = '';
+                    input.style.backgroundColor = '';
+
+                    // Limpiar sessionStorage (todas las variantes de ID)
+                    const possibleIds = [
+                        input.id,                          // ID actual
+                        `${actId}_resp${index + 1}`,      // ID único
+                        `q${index + 1}`                   // ID simple (legacy)
+                    ];
+
+                    possibleIds.forEach(id => {
+                        if (sessionStorage.getItem(id) !== null) {
+                            sessionStorage.removeItem(id);
+                            console.log(`[CLEAR-BUTTON]   ✓ Respuesta borrada: ${id}`);
+                            cleanedCount++;
                         }
-                    }
-                    keysToRemove.forEach(k => sessionStorage.removeItem(k));
-
-                    // Limpiar inputs visualmente
-                    const inputs = document.querySelectorAll(`input[data-activity-id="${actId}"]`);
-                    inputs.forEach(input => {
-                        input.value = "";
-                        input.setAttribute("value", "");
-                        input.dispatchEvent(new Event('input'));
-                        input.style.color = '';
-                        input.style.backgroundColor = '';
                     });
 
-                    // Resetear feedback
-                    if (window.removeCharFeedback) {
-                        inputs.forEach(input => window.removeCharFeedback(input.id));
+                    // Resetear feedback letra por letra
+                    if (typeof window.removeCharFeedback === 'function') {
+                        window.removeCharFeedback(input.id);
                     }
 
-                    // Ocultar feedback global
-                    const hideGroup = (className) => {
-                        const elements = document.querySelectorAll('.' + className);
-                        elements.forEach(el => {
-                            let pnode = el.parentNode;
-                            while (pnode && !pnode.classList.contains('genially-view-item')) {
-                                pnode = pnode.parentNode;
-                            }
-                            if (pnode) pnode.style.display = 'none';
-                        });
-                    };
+                    // Remover tooltips DOM directamente
+                    const feedbackEl = document.getElementById(`${input.id}-feedback`);
+                    if (feedbackEl) {
+                        feedbackEl.remove();
+                    }
+                });
 
-                    hideGroup('boncouise');
-                    hideGroup('erreurcouise');
-                    hideGroup('masquecouise');
+                // ================================================
+                // C) Ocultar feedback global de Genially
+                // ================================================
+                const hideGroup = (className) => {
+                    const elements = document.querySelectorAll('.' + className);
+                    elements.forEach(el => {
+                        // Buscar contenedor padre
+                        let pnode = el.parentNode;
+                        let attempts = 0;
+                        while (pnode && !pnode.classList.contains('genially-view-item') && attempts < 10) {
+                            pnode = pnode.parentNode;
+                            attempts++;
+                        }
+                        if (pnode) {
+                            pnode.style.display = 'none';
+                        }
+                    });
+                };
 
-                    alert("Actividad reiniciada correctamente.");
-                    console.log(`[CLEAR-BUTTON] ${keysToRemove.length} claves eliminadas`);
-                }
-            });
-        })();
-    </script>
+                hideGroup('boncouise');
+                hideGroup('erreurcouise');
+                hideGroup('masquecouise');
+
+                console.log(`[CLEAR-BUTTON] ✅ Limpieza completada: ${cleanedCount} elementos eliminados`);
+                alert(`✅ Actividad "${actId}" reiniciada correctamente.\n${cleanedCount} elementos limpiados.`);
+            }
+        });
+
+        console.log('[CLEAR-BUTTON] ✓ Botón de limpieza activado correctamente');
+    })();
+</script>
