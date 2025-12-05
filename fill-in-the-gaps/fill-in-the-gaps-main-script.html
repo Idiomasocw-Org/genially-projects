@@ -1,271 +1,327 @@
-<div id="INITcouise" data-activity-id="" style="
+<div id="INITcouise" data-activity-id="" data-persist="true" style="
     font-size: 16px;
     text-align: center;
     background-color: black;
     color: white;
   ">
-  INITIALISATION-COUISE V2.5<br />(Numera los campos y vacía los campos de respuesta SOLAMENTE en VISUALIZACIÓN)<br />
-  <small>ID Actividad: <span class="activity-id-display"></span></small>
+  INITIALISATION-COUISE V2.7 (HYBRID)<br />
+  (Numera los campos y gestiona respuestas)<br />
+  <small>ID: <span class="activity-id-display"></span> | Persistencia: <span class="persist-status">OFF</span></small>
 </div>
 
 <script>
   /* --------------------------------------------------------------
-     PLUGIN "FILL‑IN‑THE‑GAPS" V2.5
-     - Sistema de identificación único por actividad
-     - IDs descriptivos (act1_resp1, act1_intentos...)
+     PLUGIN "FILL-IN-THE-GAPS" V2.7 HÍBRIDO
+     - Mantiene compatibilidad 100% con versión original V2.4
+     - Añade persistencia OPCIONAL via data-persist="true"
+     - Sistema de múltiples actividades con IDs únicos
      -------------------------------------------------------------- */
 
-  // 0. Sistema de identificación único por actividad
-  const initWidget = document.getElementById('INITcouise');
-  let activityId = initWidget.getAttribute('data-activity-id');
+  // ============================================================
+  // CONFIGURACIÓN: Cambia data-persist="true" en el div INITcouise
+  // para activar la persistencia de respuestas
+  // ============================================================
 
-  // Si no hay ID definido, generar uno corto y descriptivo
-  if (!activityId || activityId.trim() === '') {
-    // Contar cuántos widgets INITcouise hay antes de este
-    const allInitWidgets = document.querySelectorAll('[id^="INITcouise"]');
-    const widgetIndex = Array.from(allInitWidgets).indexOf(initWidget);
-    activityId = `act${widgetIndex + 1}`; // act1, act2, act3...
-    initWidget.setAttribute('data-activity-id', activityId);
-  }
+  (function () {
+    // 0. Detectar widget y configuración
+    const allWidgets = document.querySelectorAll('[id^="INITcouise"]');
+    let initWidget = null;
 
-  // Mostrar el ID en el widget (solo visible en editor)
-  const activityIdDisplay = initWidget.querySelector('.activity-id-display');
-  if (activityIdDisplay) {
-    activityIdDisplay.textContent = activityId;
-  }
+    // Buscar el primer widget sin inicializar
+    for (let w of allWidgets) {
+      if (!w.getAttribute('data-activity-id')) {
+        initWidget = w;
+        break;
+      }
+    }
+    if (!initWidget) initWidget = document.getElementById('INITcouise');
 
-  // Guardar el activityId globalmente para que check-button.html pueda acceder
-  window.currentActivityId = activityId;
+    // Generar ID único para esta actividad
+    let activityId = initWidget.getAttribute('data-activity-id');
+    if (!activityId || activityId.trim() === '') {
+      const widgetIndex = Array.from(allWidgets).indexOf(initWidget);
+      activityId = `act${widgetIndex + 1}`;
+      initWidget.setAttribute('data-activity-id', activityId);
+    }
 
-  console.log(`Fill-in-the-gaps iniciado con ID: ${activityId}`);
+    // Leer configuración de persistencia
+    const persistEnabled = initWidget.getAttribute('data-persist') === 'true';
 
-  // Helper para crear claves de storage descriptivas
-  // Ejemplo: act1_intentos, act1_bloqueado
-  const createStorageKey = (key) => {
-    const keyMap = {
-      'fois': 'intentos',
-      'bloc': 'bloqueado',
-      'faux': 'resultado',
-      'niet': 'estado'
+    // Actualizar display
+    const activityIdDisplay = initWidget.querySelector('.activity-id-display');
+    const persistStatus = initWidget.querySelector('.persist-status');
+    if (activityIdDisplay) activityIdDisplay.textContent = activityId;
+    if (persistStatus) persistStatus.textContent = persistEnabled ? 'ON' : 'OFF';
+
+    window.currentActivityId = activityId;
+
+    console.log(`[FILL-IN-THE-GAPS] Actividad: ${activityId} | Persistencia: ${persistEnabled ? 'ACTIVADA' : 'DESACTIVADA'}`);
+
+    // Helper para claves de storage
+    const createStorageKey = (key) => {
+      const keyMap = {
+        'fois': 'intentos',
+        'bloc': 'bloqueado',
+        'faux': 'resultado',
+        'niet': 'estado'
+      };
+      const readableKey = keyMap[key] || key;
+      return `${activityId}_${readableKey}`;
     };
-    const readableKey = keyMap[key] || key;
-    return `${activityId}_${readableKey}`;
-  };
 
-  // 1. Ocultar overlay de Genially al inicio
-  setTimeout(() => {
-    const hideGeniallyOverlay = () => {
-      document.querySelectorAll('.ReactModalPortal, .ReactModal__Overlay')
-        .forEach(el => {
-          el.style.display = 'none';
-          el.style.opacity = '0';
-          el.style.pointerEvents = 'none';
+    // 1. Ocultar overlay de Genially 
+    setTimeout(() => {
+      const hideGeniallyOverlay = () => {
+        document.querySelectorAll('.ReactModalPortal, .ReactModal__Overlay')
+          .forEach(el => {
+            el.style.display = 'none';
+            el.style.opacity = '0';
+            el.style.pointerEvents = 'none';
+          });
+      };
+      hideGeniallyOverlay();
+      const observer = new MutationObserver(hideGeniallyOverlay);
+      observer.observe(document.body, { childList: true, subtree: true });
+    }, 15);
+
+    // 2. Auto-incrementar campos de respuesta (ORIGINAL + MEJORADO)
+    const findActivityContainer = () => {
+      let container = initWidget.parentNode;
+      for (let i = 0; i < 6; i++) {
+        if (container.parentNode) container = container.parentNode;
+      }
+      return container;
+    };
+
+    const activityContainer = findActivityContainer();
+    const questions = activityContainer.querySelectorAll(".question");
+
+    questions.forEach((q, i) => {
+      // IDs: Si tienes múltiples actividades usa act1_resp1, sino compatible con q1
+      const simpleId = `q${i + 1}`;
+      const uniqueId = `${activityId}_resp${i + 1}`;
+
+      // Usar ID único para múltiples actividades, ID simple para una sola
+      const finalId = allWidgets.length > 1 ? uniqueId : simpleId;
+
+      q.setAttribute("value", finalId);
+      q.setAttribute("id", finalId);
+      q.setAttribute("name", finalId);
+      q.setAttribute("data-activity-id", activityId);
+    });
+
+    console.log(`[FILL-IN-THE-GAPS] ${questions.length} campos de respuesta configurados`);
+
+    // 3. Lógica de visualización 
+    const urlParts = window.location.pathname.split("/");
+    const refGenially = urlParts[1];
+
+    if (refGenially !== "editor") {
+      // MODO 1: SIN PERSISTENCIA 
+      if (!persistEnabled) {
+        questions.forEach(q => {
+          q.value = "";
+          q.setAttribute("value", "");
         });
-    };
-
-    hideGeniallyOverlay();
-    const observer = new MutationObserver(hideGeniallyOverlay);
-    observer.observe(document.body, { childList: true, subtree: true });
-  }, 15);
-
-  // 2. Autoincrementar campos de respuesta (.question)
-  const findActivityContainer = () => {
-    let container = initWidget.parentNode;
-    for (let i = 0; i < 6; i++) {
-      if (container.parentNode) container = container.parentNode;
-    }
-    return container;
-  };
-
-  const activityContainer = findActivityContainer();
-  const questions = activityContainer.querySelectorAll(".question");
-
-  questions.forEach((q, i) => {
-    // ID descriptivo: act1_resp1, act1_resp2...
-    const ref = `${activityId}_resp${i + 1}`;
-    q.setAttribute("value", ref);
-    q.setAttribute("id", ref);
-    q.setAttribute("name", ref);
-    q.setAttribute("data-activity-id", activityId);
-  });
-
-  console.log(`${questions.length} preguntas encontradas para actividad ${activityId}`);
-
-  // 3. Lógica principal (solo en visualización, no en editor)
-  const urlParts = window.location.pathname.split("/");
-  const refGenially = urlParts[1];
-
-  // Limpiar valores en visualización
-  if (refGenially !== "editor" && refGenially !== "Preview") {
-    questions.forEach(q => q.setAttribute("value", ""));
-  }
-
-  if (refGenially !== "editor") {
-    // Ocultar elementos de inicialización y feedback al arrancar
-    const hideElement = (id) => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = "none";
-    };
-
-    hideElement("INITcouise");
-    hideElement("boncouise");
-    hideElement("erreurcouise");
-    hideElement("masquecouise");
-    hideElement("tentativecouise");
-
-    // Helper para encontrar el contenedor padre
-    const findParentContainer = (element) => {
-      if (!element) return null;
-      let pnode = element.parentNode.parentNode.parentNode;
-      while (pnode && pnode.getAttribute("id") == null) {
-        pnode = pnode.parentNode;
+        console.log('[FILL-IN-THE-GAPS] Campos limpiados (modo original)');
       }
-      return pnode ? pnode.parentNode.parentNode : null;
-    };
 
-    const getParentById = (id) => {
-      const el = document.getElementById(id);
-      return findParentContainer(el);
-    };
+      // MODO 2: CON PERSISTENCIA (Nueva funcionalidad)
+      else {
+        questions.forEach(q => {
+          const savedVal = sessionStorage.getItem(q.id);
+          if (savedVal !== null) {
+            q.value = savedVal;
+            q.setAttribute("value", savedVal);
+          } else {
+            q.value = "";
+            q.setAttribute("value", "");
+          }
 
-    const hideGroup = (className) => {
-      const elements = activityContainer.querySelectorAll("." + className);
-      elements.forEach(el => {
-        const parent = findParentContainer(el);
-        if (parent) parent.style.display = "none";
-      });
-    };
-
-    hideGroup("boncouise");
-    hideGroup("erreurcouise");
-    hideGroup("masquecouise");
-
-    const getTexte = (name) => {
-      const pnode = getParentById(name);
-      if (!pnode) return null;
-
-      if (pnode.querySelector("font")) {
-        return pnode.querySelector("font");
-      } else if (pnode.querySelector(".genially-view-text div")) {
-        return pnode.querySelector(".genially-view-text div");
-      } else {
-        return pnode.querySelector(".genially-view-text");
+          // Guardar al escribir
+          q.addEventListener('input', (e) => {
+            sessionStorage.setItem(q.id, e.target.value);
+            window.lastInteractedActivity = activityId;
+          });
+        });
+        console.log('[FILL-IN-THE-GAPS] Persistencia activada - Respuestas guardadas');
       }
-    };
 
-    if (document.getElementById("boncouise")) {
-      const parent = getParentById("boncouise");
-      if (parent) parent.style.display = "none";
-    }
-    if (document.getElementById("erreurcouise")) {
-      const parent = getParentById("erreurcouise");
-      if (parent) parent.style.display = "none";
-    }
+      // Ocultar elementos
+      const hideElement = (id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+      };
 
-    // Gestión de estado con nombres descriptivos
-    const storageKey = createStorageKey("fois"); // act1_intentos
-    const blockKey = createStorageKey("bloc");   // act1_bloqueado
-    const resultKey = createStorageKey("faux");  // act1_resultado
+      hideElement("INITcouise");
+      hideElement("boncouise");
+      hideElement("erreurcouise");
+      hideElement("masquecouise");
+      hideElement("tentativecouise");
 
-    console.log(`Claves: ${storageKey}, ${blockKey}, ${resultKey}`);
+      // Helpers 
+      function getParentElt(nombre) {
+        var pnode = questions[nombre].parentNode.parentNode.parentNode;
+        while (pnode && pnode.getAttribute('id') == null) {
+          pnode = pnode.parentNode;
+        }
+        pnode = pnode.parentNode.parentNode;
+        return (pnode);
+      }
 
-    if (sessionStorage.getItem(blockKey) != 1) {
-      sessionStorage.setItem(storageKey, 0);
-    }
+      const findParentContainer = (element) => {
+        if (!element) return null;
+        let pnode = element.parentNode.parentNode.parentNode;
+        while (pnode && pnode.getAttribute("id") == null) {
+          pnode = pnode.parentNode;
+        }
+        return pnode ? pnode.parentNode.parentNode : null;
+      };
 
-    if (document.getElementById("tentativecouise")) {
-      const textEl = getTexte("tentativecouise");
-      if (textEl) textEl.innerHTML = sessionStorage.getItem(storageKey);
-    }
+      const getParentById = (id) => {
+        const el = document.getElementById(id);
+        return findParentContainer(el);
+      };
 
-    if (sessionStorage.getItem(resultKey) != null) {
-      const isFalse = sessionStorage.getItem(resultKey) == 1;
-
-      const toggleGroupDisplay = (className, show) => {
+      const hideGroup = (className) => {
         const elements = activityContainer.querySelectorAll("." + className);
         elements.forEach(el => {
           const parent = findParentContainer(el);
-          if (parent) parent.style.display = show ? "block" : "none";
+          if (parent) parent.style.display = "none";
         });
       };
 
-      const toggleElementDisplay = (id, show) => {
-        const el = document.getElementById(id);
-        if (el) {
-          const parent = getParentById(id);
-          if (parent) parent.style.display = show ? "block" : "none";
+      hideGroup("boncouise");
+      hideGroup("erreurcouise");
+      hideGroup("masquecouise");
+
+      const getTexte = (name) => {
+        const pnode = getParentById(name);
+        if (!pnode) return null;
+
+        if (pnode.querySelector("font")) {
+          return pnode.querySelector("font");
+        } else if (pnode.querySelector(".genially-view-text div")) {
+          return pnode.querySelector(".genially-view-text div");
+        } else {
+          return pnode.querySelector(".genially-view-text");
         }
       };
 
-      if (isFalse) {
-        toggleGroupDisplay("boncouise", false);
-        toggleGroupDisplay("erreurcouise", true);
-        toggleGroupDisplay("masquecouise", true);
+      if (document.getElementById("boncouise")) {
+        const parent = getParentById("boncouise");
+        if (parent) parent.style.display = "none";
+      }
+      if (document.getElementById("erreurcouise")) {
+        const parent = getParentById("erreurcouise");
+        if (parent) parent.style.display = "none";
+      }
 
-        toggleElementDisplay("erreurcouise", true);
-        toggleElementDisplay("boncouise", false);
-        toggleElementDisplay("masquecouise", true);
-      } else {
-        toggleGroupDisplay("boncouise", true);
-        toggleGroupDisplay("erreurcouise", false);
-        toggleGroupDisplay("masquecouise", false);
+      // Gestión de estado
+      const storageKey = createStorageKey("fois");
+      const blockKey = createStorageKey("bloc");
+      const resultKey = createStorageKey("faux");
 
-        toggleElementDisplay("boncouise", true);
-        toggleElementDisplay("erreurcouise", false);
-        toggleElementDisplay("masquecouise", false);
+      if (sessionStorage.getItem(blockKey) != 1) {
+        sessionStorage.setItem(storageKey, 0);
+      }
+
+      if (document.getElementById("tentativecouise")) {
+        const textEl = getTexte("tentativecouise");
+        if (textEl) textEl.innerHTML = sessionStorage.getItem(storageKey);
+      }
+
+      // Mostrar resultado guardado
+      if (sessionStorage.getItem(resultKey) != null) {
+        const isFalse = sessionStorage.getItem(resultKey) == 1;
+
+        const toggleGroupDisplay = (className, show) => {
+          const elements = activityContainer.querySelectorAll("." + className);
+          elements.forEach(el => {
+            const parent = findParentContainer(el);
+            if (parent) parent.style.display = show ? "block" : "none";
+          });
+        };
+
+        const toggleElementDisplay = (id, show) => {
+          const el = document.getElementById(id);
+          if (el) {
+            const parent = getParentById(id);
+            if (parent) parent.style.display = show ? "block" : "none";
+          }
+        };
+
+        if (isFalse) {
+          toggleGroupDisplay("boncouise", false);
+          toggleGroupDisplay("erreurcouise", true);
+          toggleGroupDisplay("masquecouise", true);
+          toggleElementDisplay("erreurcouise", true);
+          toggleElementDisplay("boncouise", false);
+          toggleElementDisplay("masquecouise", true);
+        } else {
+          toggleGroupDisplay("boncouise", true);
+          toggleGroupDisplay("erreurcouise", false);
+          toggleGroupDisplay("masquecouise", false);
+          toggleElementDisplay("boncouise", true);
+          toggleElementDisplay("erreurcouise", false);
+          toggleElementDisplay("masquecouise", false);
+        }
       }
     }
-  }
 
-  /* ---------- 4. Funciones de Feedback Visual (Tooltip) ---------- */
-  window.showCharFeedback = (inputId, userVal, correctVal) => {
-    const input = document.getElementById(inputId);
-    if (!input) return;
+    // 4. Funciones de Feedback Visual 
+    if (persistEnabled) {
+      window.showCharFeedback = (inputId, userVal, correctVal) => {
+        const input = document.getElementById(inputId);
+        if (!input) return;
 
-    window.removeCharFeedback(inputId);
+        window.removeCharFeedback(inputId);
 
-    const feedback = document.createElement('div');
-    feedback.id = `${inputId}-feedback`;
-    Object.assign(feedback.style, {
-      position: 'absolute',
-      marginTop: '5px',
-      padding: '4px 8px',
-      background: '#fff',
-      border: '1px solid #e74c3c',
-      borderRadius: '4px',
-      zIndex: '10000',
-      fontSize: '14px',
-      fontFamily: 'monospace',
-      pointerEvents: 'none',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-      whiteSpace: 'nowrap',
-      color: '#333'
-    });
+        const feedback = document.createElement('div');
+        feedback.id = `${inputId}-feedback`;
+        Object.assign(feedback.style, {
+          position: 'absolute',
+          marginTop: '5px',
+          padding: '4px 8px',
+          background: '#fff',
+          border: '1px solid #e74c3c',
+          borderRadius: '4px',
+          zIndex: '10000',
+          fontSize: '14px',
+          fontFamily: 'monospace',
+          pointerEvents: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          whiteSpace: 'nowrap',
+          color: '#333'
+        });
 
-    const rect = input.getBoundingClientRect();
-    document.body.appendChild(feedback);
-    feedback.style.top = `${rect.bottom + window.scrollY}px`;
-    feedback.style.left = `${rect.left + window.scrollX}px`;
+        const rect = input.getBoundingClientRect();
+        document.body.appendChild(feedback);
+        feedback.style.top = `${rect.bottom + window.scrollY}px`;
+        feedback.style.left = `${rect.left + window.scrollX}px`;
 
-    const primaryCorrect = correctVal.split('|')[0];
-    let html = '';
-    const maxLen = Math.max(userVal.length, primaryCorrect.length);
+        const primaryCorrect = correctVal.split('|')[0];
+        let html = '';
+        const maxLen = Math.max(userVal.length, primaryCorrect.length);
 
-    for (let i = 0; i < maxLen; i++) {
-      const u = userVal[i] || '';
-      const c = primaryCorrect[i] || '';
+        for (let i = 0; i < maxLen; i++) {
+          const u = userVal[i] || '';
+          const c = primaryCorrect[i] || '';
 
-      if (u.toLowerCase() === c.toLowerCase()) {
-        html += `<span style="color:#27ae60; font-weight:bold">${u}</span>`;
-      } else {
-        html += u ? `<span style="background:#fadbd8; color:#c0392b; text-decoration:line-through">${u}</span>` : `<span style="color:#ccc">_</span>`;
-      }
+          if (u.toLowerCase() === c.toLowerCase()) {
+            html += `<span style="color:#27ae60; font-weight:bold">${u}</span>`;
+          } else {
+            html += u ? `<span style="background:#fadbd8; color:#c0392b; text-decoration:line-through">${u}</span>` : `<span style="color:#ccc">_</span>`;
+          }
+        }
+        feedback.innerHTML = html;
+      };
+
+      window.removeCharFeedback = (inputId) => {
+        const el = document.getElementById(`${inputId}-feedback`);
+        if (el) el.remove();
+      };
     }
-    feedback.innerHTML = html;
-  };
 
-  window.removeCharFeedback = (inputId) => {
-    const el = document.getElementById(`${inputId}-feedback`);
-    if (el) el.remove();
-  };
+  })();
 </script>

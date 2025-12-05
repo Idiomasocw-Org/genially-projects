@@ -1,244 +1,312 @@
-	<script>
-		/* --------------------------------------------------------------
-		SCRIPT DE VALIDACIÓN (CHECK BUTTON) V2.5
-		- Sistema de identificación único por actividad
-		- IDs descriptivos (act1_resp1, act1_intentos...)
-		-------------------------------------------------------------- */
+<script>
+	/* --------------------------------------------------------------
+	SCRIPT DE VALIDACIÓN (CHECK BUTTON) V2.7 HÍBRIDO FIXED
+	- Compatible con modo original y modo con persistencia
+	- Detección inteligente de actividad
+	- Feedback avanzado opcional
+	- RESETEA feedback antes de cada validación
+	-------------------------------------------------------------- */
 
-		// --- VARIABLES DE USUARIO ---
-		var solution = ["facilitating"]; // Ingrese sus respuestas esperadas
-		var ordre = 1;         // 1: orden importante, 0: orden no importa
-		var espace = 1;        // 1: ignorar espacios inicio/fin
-		var casse = 0;         // 1: distinguir mayúsculas/minúsculas
-		var correct = 1;       // 1: mostrar errores (rojo/verde)
-		var tentative = 0;     // 1: mostrar contador de intentos
-		var maxtentative = 0;  // Máximo de intentos (0 = ilimitado)
-		var unefois = 0;       // 1: bloquear tras un intento
+	// --- VARIABLES DE USUARIO ---
+	var solution = ["test"]; // Ingrese sus respuestas esperadas
+	var ordre = 1;         // 1: orden importante, 0: orden no importa
+	var espace = 1;        // 1: ignorar espacios inicio/fin
+	var casse = 0;         // 1: distinguir mayúsculas/minúsculas
+	var correct = 1;       // 1: mostrar errores (rojo/verde)
+	var tentative = 0;     // 1: mostrar contador de intentos
+	var maxtentative = 0;  // Máximo de intentos (0 = ilimitado)
+	var unefois = 0;       // 1: bloquear tras un intento
 
-		// --- VARIABLES INTERNAS ---
-		var ellipseFillColor = 'green'; // Color por defecto para aciertos
-		try {
-			const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
-			if (svgElement) {
-				const ellipse = svgElement.querySelector('ellipse.color1');
-				if (ellipse) ellipseFillColor = ellipse.getAttribute('fill');
-			}
-		} catch (e) { }
+	// --- VARIABLES INTERNAS ---
+	var ellipseFillColor = 'green';
+	try {
+		const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
+		if (svgElement) {
+			const ellipse = svgElement.querySelector('ellipse.color1');
+			if (ellipse) ellipseFillColor = ellipse.getAttribute('fill');
+		}
+	} catch (e) { }
 
-		// Helpers locales
-		function getParent(name) {
-			var pnode = document.getElementById(name);
-			if (!pnode) return null;
-			pnode = pnode.parentNode.parentNode.parentNode;
-			while (pnode && pnode.getAttribute('id') == null) {
-				pnode = pnode.parentNode;
-			}
-			return pnode ? pnode.parentNode.parentNode : null;
+	// Helpers locales
+	function getParent(name) {
+		var pnode = document.getElementById(name);
+		if (!pnode) return null;
+		pnode = pnode.parentNode.parentNode.parentNode;
+		while (pnode && pnode.getAttribute('id') == null) {
+			pnode = pnode.parentNode;
+		}
+		return pnode ? pnode.parentNode.parentNode : null;
+	}
+
+	function getTexte(name) {
+		var pnode = getParent(name);
+		if (!pnode) return null;
+		if (pnode.querySelector('font')) return pnode.querySelector('font');
+		if (pnode.querySelector('.genially-view-text div')) return pnode.querySelector('.genially-view-text div');
+		return pnode.querySelector('.genially-view-text');
+	}
+
+	// --- LÓGICA PRINCIPAL ---
+	(function () {
+		// Detectar actividad - MEJORADO
+		let activityId = window.lastInteractedActivity || window.currentActivityId;
+		let initWidget = null;
+
+		if (activityId) {
+			// Buscar por ID de actividad en elementos INITcouise
+			initWidget = document.querySelector(`[id^="INITcouise"][data-activity-id="${activityId}"]`);
 		}
 
-		function getTexte(name) {
-			var pnode = getParent(name);
-			if (!pnode) return null;
-			if (pnode.querySelector('font')) return pnode.querySelector('font');
-			if (pnode.querySelector('.genially-view-text div')) return pnode.querySelector('.genially-view-text div');
-			return pnode.querySelector('.genially-view-text');
-		}
-
-		// --- LÓGICA PRINCIPAL ---
-		(function () {
-			// Referencias a la página
-			var initWidget = document.getElementById('INITcouise');
+		if (!initWidget) {
+			// Buscar cualquier elemento INITcouise
+			initWidget = document.querySelector('[id^="INITcouise"]');
 			if (!initWidget) {
-				console.error(' No se encontró el widget INITcouise');
-				return;
+				initWidget = document.getElementById('INITcouise');
+			}
+			if (initWidget) {
+				activityId = initWidget.getAttribute('data-activity-id') || 'act1';
+			}
+		}
+
+		if (!initWidget || !activityId) {
+			console.error('[CHECK-BUTTON] No se encontró el widget INITcouise');
+			return;
+		}
+
+		// Detectar si la persistencia está activada - MEJORADO CON DEBUG
+		const persistAttr = initWidget.getAttribute('data-persist');
+		const persistEnabled = persistAttr === 'true';
+
+		console.log(`[CHECK-BUTTON] Actividad: ${activityId} | Persistencia: ${persistEnabled ? 'ON' : 'OFF'} | data-persist="${persistAttr}"`);
+
+		// Helper para crear claves de storage
+		const createStorageKey = (key) => {
+			const keyMap = {
+				'fois': 'intentos',
+				'bloc': 'bloqueado',
+				'faux': 'resultado',
+				'niet': 'estado'
+			};
+			const readableKey = keyMap[key] || key;
+			return `${activityId}_${readableKey}`;
+		};
+
+		var stop = createStorageKey('niet');
+		var niet = sessionStorage.getItem(stop) || 0;
+
+		var BON = document.getElementById('boncouise') ? getParent('boncouise') : null;
+		var PASBON = document.getElementById('erreurcouise') ? getParent('erreurcouise') : null;
+		var MASQUE = document.getElementById('masquecouise') ? getParent('masquecouise') : null;
+
+		// Cerrar modal de Genially
+		setTimeout(function () {
+			var closeBtn = document.getElementsByClassName('icon-close')[0];
+			if (closeBtn) closeBtn.click();
+		}, 10);
+		var modal = document.getElementById('genially-view-modal');
+		if (modal) modal.style.visibility = "hidden";
+
+		// Recuperar respuestas
+		var reponse = [];
+		const allWidgets = document.querySelectorAll('[id^="INITcouise"]');
+		const useUniqueIds = allWidgets.length > 1;
+
+		for (var i = 1; i <= solution.length; i++) {
+			let questionId;
+			let el;
+
+			if (useUniqueIds) {
+				questionId = `${activityId}_resp${i}`;
+				el = document.getElementById(questionId);
 			}
 
-			// Obtener el ID de actividad único
-			var activityId = initWidget.getAttribute('data-activity-id') || window.currentActivityId;
-			if (!activityId) {
-				console.error('No se encontró el ID de actividad');
-				return;
+			if (!el) {
+				questionId = `q${i}`;
+				el = document.getElementById(questionId);
 			}
 
-			console.log(`Check button ejecutándose para actividad: ${activityId}`);
+			var val = el ? el.value : "";
+			if (espace == 1) val = val.trim();
+			reponse.push(val);
+		}
 
-			// Helper para crear claves de storage descriptivas
-			const createStorageKey = (key) => {
-				const keyMap = {
-					'fois': 'intentos',
-					'bloc': 'bloqueado',
-					'faux': 'resultado',
-					'niet': 'estado'
-				};
-				const readableKey = keyMap[key] || key;
-				return `${activityId}_${readableKey}`;
+		console.log(`[CHECK-BUTTON] ${reponse.length} respuestas recuperadas`);
+
+		// Gestión de intentos
+		if (tentative == 1) {
+			var stockage = createStorageKey('fois');
+			var blocage = createStorageKey('bloc');
+
+			if (sessionStorage.getItem(stockage) == null) sessionStorage.setItem(stockage, 0);
+			var fois = parseInt(sessionStorage.getItem(stockage), 10);
+
+			if ((maxtentative != 0 && fois < maxtentative && niet != 1) || (maxtentative == 0 && niet != 1)) {
+				fois++;
+				var txtTentative = getTexte('tentativecouise');
+				if (txtTentative) txtTentative.innerHTML = fois;
+				sessionStorage.setItem(stockage, fois);
+				console.log(`[CHECK-BUTTON] Intento #${fois}`);
+			} else {
+				niet = 1;
+				console.log(`[CHECK-BUTTON] Máximo de intentos alcanzado`);
+			}
+
+			if (unefois == 1) {
+				sessionStorage.setItem(blocage, unefois);
+			}
+		}
+
+		// Validación
+		if (niet == 0) {
+			var faux = 0;
+
+			var solProc = solution.slice();
+			var repProc = reponse.slice();
+
+			if (casse != 1) {
+				for (var b = 0; b < solProc.length; b++) {
+					solProc[b] = solProc[b].toUpperCase();
+					repProc[b] = repProc[b].toUpperCase();
+				}
+			}
+
+			// ⭐ LIMPIAR FEEDBACK ANTERIOR ANTES DE VALIDAR (MEJORADO CON SEGURIDAD)
+			console.log('[CHECK-BUTTON] Limpiando feedback anterior...');
+			try {
+				for (var c = 0; c < solution.length; c++) {
+					let cleanId = useUniqueIds ? `${activityId}_resp${c + 1}` : `q${c + 1}`;
+					var cleanEl = document.getElementById(cleanId);
+
+					if (!cleanEl && useUniqueIds) {
+						cleanId = `q${c + 1}`;
+						cleanEl = document.getElementById(cleanId);
+					}
+
+					if (cleanEl) {
+						// Resetear color
+						cleanEl.style.color = '';
+
+						// Remover tooltips (con múltiples métodos por seguridad)
+						if (typeof window.removeCharFeedback === 'function') {
+							window.removeCharFeedback(cleanId);
+						}
+						// También remover elementos DOM directamente
+						const oldFeedback = document.getElementById(`${cleanId}-feedback`);
+						if (oldFeedback) oldFeedback.remove();
+					}
+				}
+				console.log('[CHECK-BUTTON] Feedback limpiado correctamente');
+			} catch (cleanError) {
+				console.log(`[CHECK-BUTTON] Error al limpiar (no crítico): ${cleanError.message}`);
+			}
+
+			// Comparación
+			for (var a = 0; a < solProc.length; a++) {
+				let questionId = useUniqueIds ? `${activityId}_resp${a + 1}` : `q${a + 1}`;
+				var elQuestion = document.getElementById(questionId);
+
+				if (!elQuestion && useUniqueIds) {
+					questionId = `q${a + 1}`;
+					elQuestion = document.getElementById(questionId);
+				}
+
+				var userVal = repProc[a];
+				var correctVal = solProc[a];
+
+				var isCorrect = false;
+				var alternatives = correctVal.split('|');
+
+				if (ordre != 1) {
+					for (var k = 0; k < solProc.length; k++) {
+						var alts = solProc[k].split('|');
+						if (alts.includes(userVal)) {
+							isCorrect = true;
+							break;
+						}
+					}
+				} else {
+					isCorrect = alternatives.includes(userVal);
+				}
+
+				if (!isCorrect) {
+					faux = 1;
+					if (correct == 1 && elQuestion) {
+						elQuestion.style.color = 'red';
+
+						// Solo mostrar feedback letra por letra si hay persistencia
+						if (persistEnabled && typeof window.showCharFeedback === 'function') {
+							try {
+								window.showCharFeedback(questionId, reponse[a], solution[a]);
+							} catch (e) {
+								console.log('[CHECK-BUTTON] Error mostrando feedback: ' + e.message);
+							}
+						}
+					}
+				} else {
+					if (correct == 1 && elQuestion) {
+						elQuestion.style.color = ellipseFillColor;
+					}
+				}
+			}
+
+			// Guardar resultado
+			var resultat = createStorageKey('faux');
+			sessionStorage.setItem(resultat, faux);
+
+			const findParentContainer = (element) => {
+				if (!element) return null;
+				let pnode = element.parentNode.parentNode.parentNode;
+				while (pnode && pnode.getAttribute("id") == null) {
+					pnode = pnode.parentNode;
+				}
+				return pnode ? pnode.parentNode.parentNode : null;
 			};
 
-			var stop = createStorageKey('niet'); // act1_estado
-			var niet = sessionStorage.getItem(stop) || 0;
-
-			// Elementos de feedback global
-			var BON = document.getElementById('boncouise') ? getParent('boncouise') : null;
-			var PASBON = document.getElementById('erreurcouise') ? getParent('erreurcouise') : null;
-			var MASQUE = document.getElementById('masquecouise') ? getParent('masquecouise') : null;
-
-			// Cerrar modal de Genially si está abierto (hack)
-			setTimeout(function () {
-				var closeBtn = document.getElementsByClassName('icon-close')[0];
-				if (closeBtn) closeBtn.click();
-			}, 10);
-			var modal = document.getElementById('genially-view-modal');
-			if (modal) modal.style.visibility = "hidden";
-
-			// Recuperar respuestas usando los IDs descriptivos
-			var reponse = [];
-			for (var i = 1; i <= solution.length; i++) {
-				// Buscar el input con el ID descriptivo: act1_resp1
-				var questionId = `${activityId}_resp${i}`;
-				var el = document.getElementById(questionId);
-
-				if (!el) {
-					// Fallback: intentar con el ID antiguo
-					el = document.getElementById("q" + i);
+			let activityContainer = null;
+			if (initWidget) {
+				activityContainer = initWidget.parentNode;
+				for (let i = 0; i < 6; i++) {
+					if (activityContainer.parentNode) activityContainer = activityContainer.parentNode;
 				}
-
-				var val = el ? el.value : "";
-				if (espace == 1) val = val.trim();
-				reponse.push(val);
 			}
 
-			console.log(`Respuestas recuperadas: ${reponse.length}`);
+			var toggleGroup = function (cls, show) {
+				var context = activityContainer || document;
+				var els = context.querySelectorAll('.' + cls);
 
-			// Gestión de intentos con namespace descriptivo
-			if (tentative == 1) {
-				var stockage = createStorageKey('fois'); // act1_intentos
-				var blocage = createStorageKey('bloc');  // act1_bloqueado
-
-				if (sessionStorage.getItem(stockage) == null) sessionStorage.setItem(stockage, 0);
-				var fois = parseInt(sessionStorage.getItem(stockage), 10);
-
-				if ((maxtentative != 0 && fois < maxtentative && niet != 1) || (maxtentative == 0 && niet != 1)) {
-					fois++;
-					var txtTentative = getTexte('tentativecouise');
-					if (txtTentative) txtTentative.innerHTML = fois;
-					sessionStorage.setItem(stockage, fois);
-					console.log(`Intento #${fois} registrado`);
-				} else {
-					niet = 1;
-					console.log(`Máximo de intentos alcanzado`);
+				if (els.length === 0 && context !== document) {
+					els = document.querySelectorAll('.' + cls);
 				}
+
+				els.forEach(function (e) {
+					var p = findParentContainer(e);
+					if (p) p.style.display = show ? 'block' : 'none';
+				});
+			};
+
+			if (faux == 1) {
+				console.log('[CHECK-BUTTON] Respuesta incorrecta');
+				toggleGroup('boncouise', false);
+				toggleGroup('erreurcouise', true);
+				toggleGroup('masquecouise', true);
+				if (PASBON) PASBON.style.display = "block";
+				if (BON) BON.style.display = "none";
+				if (MASQUE) MASQUE.style.display = "block";
+			} else {
+				console.log('[CHECK-BUTTON] Respuesta correcta');
+				toggleGroup('boncouise', true);
+				toggleGroup('erreurcouise', false);
+				toggleGroup('masquecouise', false);
+				if (BON) BON.style.display = "block";
+				if (PASBON) PASBON.style.display = "none";
+				if (MASQUE) MASQUE.style.display = "none";
 
 				if (unefois == 1) {
-					sessionStorage.setItem(blocage, unefois);
+					sessionStorage.setItem(stop, 1);
 				}
 			}
-
-			// Validación
-			if (niet == 0) {
-				var faux = 0;
-
-				// Normalizar mayúsculas si es necesario
-				var solProc = solution.slice();
-				var repProc = reponse.slice();
-
-				if (casse != 1) {
-					for (var b = 0; b < solProc.length; b++) {
-						solProc[b] = solProc[b].toUpperCase();
-						repProc[b] = repProc[b].toUpperCase();
-					}
-				}
-
-				// Comparación
-				for (var a = 0; a < solProc.length; a++) {
-					var questionId = `${activityId}_resp${a + 1}`;
-					var elQuestion = document.getElementById(questionId);
-
-					// Fallback
-					if (!elQuestion) {
-						questionId = "q" + (a + 1);
-						elQuestion = document.getElementById(questionId);
-					}
-
-					var userVal = repProc[a];
-					var correctVal = solProc[a];
-
-					var isCorrect = false;
-					var alternatives = correctVal.split('|');
-
-					if (ordre != 1) {
-						for (var k = 0; k < solProc.length; k++) {
-							var alts = solProc[k].split('|');
-							if (alts.includes(userVal)) {
-								isCorrect = true;
-								break;
-							}
-						}
-					} else {
-						isCorrect = alternatives.includes(userVal);
-					}
-
-					if (!isCorrect) {
-						faux = 1;
-						if (correct == 1 && elQuestion) {
-							elQuestion.style.color = 'red';
-							if (window.showCharFeedback) {
-								window.showCharFeedback(questionId, reponse[a], solution[a]);
-							}
-						}
-					} else {
-						if (correct == 1 && elQuestion) {
-							elQuestion.style.color = ellipseFillColor;
-							if (window.removeCharFeedback) {
-								window.removeCharFeedback(questionId);
-							}
-						}
-					}
-				}
-
-				// Mostrar resultados globales
-				var resultat = createStorageKey('faux'); // act1_resultado
-				if (unefois == 1) sessionStorage.setItem(resultat, faux);
-
-				const findParentContainer = (element) => {
-					if (!element) return null;
-					let pnode = element.parentNode.parentNode.parentNode;
-					while (pnode && pnode.getAttribute("id") == null) {
-						pnode = pnode.parentNode;
-					}
-					return pnode ? pnode.parentNode.parentNode : null;
-				};
-
-				var toggleGroup = function (cls, show) {
-					var els = document.querySelectorAll('.' + cls);
-					els.forEach(function (e) {
-						var p = findParentContainer(e);
-						if (p) p.style.display = show ? 'block' : 'none';
-					});
-				};
-
-				if (faux == 1) {
-					console.log('Respuesta incorrecta');
-					toggleGroup('boncouise', false);
-					toggleGroup('erreurcouise', true);
-					toggleGroup('masquecouise', true);
-					if (PASBON) PASBON.style.display = "block";
-					if (BON) BON.style.display = "none";
-					if (MASQUE) MASQUE.style.display = "block";
-				} else {
-					console.log('Respuesta correcta');
-					toggleGroup('boncouise', true);
-					toggleGroup('erreurcouise', false);
-					toggleGroup('masquecouise', false);
-					if (BON) BON.style.display = "block";
-					if (PASBON) PASBON.style.display = "none";
-					if (MASQUE) MASQUE.style.display = "none";
-
-					if (unefois == 1) {
-						sessionStorage.setItem(stop, 1);
-					}
-				}
-			} else {
-				console.log('Actividad bloqueada');
-			}
-		})();
-	</script>
+		} else {
+			console.log('[CHECK-BUTTON] Actividad bloqueada');
+		}
+	})();
+</script>

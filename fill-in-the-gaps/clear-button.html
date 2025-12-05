@@ -1,0 +1,126 @@
+    <!-- BOTÓN DE LIMPIEZA (Solo funciona con data-persist="true") -->
+
+    <style>
+        .clear-btn-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .clear-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Source Sans Pro', sans-serif;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .clear-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .clear-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .clear-btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+    </style>
+
+    <div class="clear-btn-container">
+        <button id="clear-btn-hybrid" class="clear-btn">
+            Limpiar Respuestas
+        </button>
+    </div>
+
+    <script>
+        (function () {
+            const btn = document.getElementById('clear-btn-hybrid');
+            const uniqueId = 'clear-btn-' + Math.random().toString(36).substr(2, 9);
+            btn.id = uniqueId;
+
+            // Verificar que la persistencia esté activada
+            function checkPersistenceEnabled() {
+                const initWidget = document.querySelector('[id^="INITcouise"][data-persist="true"]');
+                return initWidget !== null;
+            }
+
+            // Deshabilitar botón si no hay persistencia
+            if (!checkPersistenceEnabled()) {
+                btn.disabled = true;
+                btn.title = "Este botón solo funciona con data-persist='true'";
+                console.log('[CLEAR-BUTTON] Botón deshabilitado - persistencia no activada');
+                return;
+            }
+
+            btn.addEventListener('click', () => {
+                let actId = window.lastInteractedActivity || window.currentActivityId;
+
+                const manualId = ""; // Opcional: forzar un ID específico
+                if (manualId) actId = manualId;
+
+                if (!actId) {
+                    alert("No se encontró la actividad para limpiar.");
+                    return;
+                }
+
+                if (confirm("¿Estás seguro de que quieres borrar tus respuestas y reiniciar esta actividad?")) {
+                    console.log(`[CLEAR-BUTTON] Limpiando actividad: ${actId}`);
+
+                    // Borrar claves de sessionStorage
+                    const keysToRemove = [];
+                    for (let i = 0; i < sessionStorage.length; i++) {
+                        const key = sessionStorage.key(i);
+                        if (key && key.startsWith(actId + '_')) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    keysToRemove.forEach(k => sessionStorage.removeItem(k));
+
+                    // Limpiar inputs visualmente
+                    const inputs = document.querySelectorAll(`input[data-activity-id="${actId}"]`);
+                    inputs.forEach(input => {
+                        input.value = "";
+                        input.setAttribute("value", "");
+                        input.dispatchEvent(new Event('input'));
+                        input.style.color = '';
+                        input.style.backgroundColor = '';
+                    });
+
+                    // Resetear feedback
+                    if (window.removeCharFeedback) {
+                        inputs.forEach(input => window.removeCharFeedback(input.id));
+                    }
+
+                    // Ocultar feedback global
+                    const hideGroup = (className) => {
+                        const elements = document.querySelectorAll('.' + className);
+                        elements.forEach(el => {
+                            let pnode = el.parentNode;
+                            while (pnode && !pnode.classList.contains('genially-view-item')) {
+                                pnode = pnode.parentNode;
+                            }
+                            if (pnode) pnode.style.display = 'none';
+                        });
+                    };
+
+                    hideGroup('boncouise');
+                    hideGroup('erreurcouise');
+                    hideGroup('masquecouise');
+
+                    alert("Actividad reiniciada correctamente.");
+                    console.log(`[CLEAR-BUTTON] ${keysToRemove.length} claves eliminadas`);
+                }
+            });
+        })();
+    </script>
