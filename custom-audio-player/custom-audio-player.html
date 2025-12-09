@@ -1,22 +1,23 @@
 <!-- 
-  🎵 GUÍA DE USO - AUDIO COLOR WIDGET (V12) 🎵
-  ---------------------------------------------
-  1. Copia todo este código en un elemento 'Insertar > Otros' en Genially.
-  2. Coloca tu AUDIO normal de Genially en la página.
-  3. Dibuja 4 FIGURAS (ej. cuadrados) con los colores que desees.
-  4. Colócalas en orden de IZQUIERDA a DERECHA visualmente:
-       [1º Fondo]   [2º Botón Play]   [3º Barra Progreso]   [4º Texto/Números]
-  5. Selecciona TODO JUNTO:
-       (Este Widget + Tu Audio + Las 4 Figuras)
-  6. AGRÚPALO (Botón Agrupar o Ctrl + G).
+  🎵 GUÍA DE USO - AUDIO COLOR WIDGET (V13 HÍBRIDO) 🎵
+  ----------------------------------------------------
+  OPCIÓN A: MODO VISUAL (Sin código)
+    1. Agrupa este widget con tu Audio.
+    2. Añade 4 figuras de color agrupadas en orden (Izq->Der):
+       [Fondo] [Botón] [Barra] [Texto]
   
-  * El widget es invisible en previsualización.
-  * Los colores se detectan automáticamente.
+  OPCIÓN B: MODO CÓDIGO (Manual)
+    1. Edita este HTML y añade atributos al div principal:
+       data-audio-bg-color="#000000"
+       data-audio-btn-color="#ff0000"
+       data-audio-prog-color="#00ff00"
+       data-audio-text-color="#ffffff"
+    2. Agrupa el widget con el audio (no necesitas figuras).
 -->
 <div id="custom-audio-player"
   style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
   <span style="font-family:sans-serif; font-size:11px; color:#555; opacity:0.6; user-select:none;">
-    Audio Color Widget
+    Audio Color Widget V13
   </span>
 </div>
 
@@ -28,39 +29,34 @@
 
 <script>
   /* --------------------------------------------------------------
-     PLUGIN CUSTOM AUDIO PLAYER V12.0 - INVISIBLE SCAN
+     PLUGIN CUSTOM AUDIO PLAYER V13.0 - HYBRID MODE
      -------------------------------------------------------------- */
   (function () {
-    // Ocultar siempre en previsualización/view
     if (window.location.pathname.split('/')[1] !== 'editor') {
       document.querySelectorAll('[id^="custom-audio-player"]').forEach(w => w.style.display = 'none');
     }
 
-    const log = (msg) => console.log(`[AUDIO V12] ${msg}`);
+    const log = (msg) => console.log(`[AUDIO V13] ${msg}`);
 
     const extractColor = (el) => {
       if (!el) return null;
       const tag = el.tagName.toUpperCase();
-
-      // 🚫 REGLA DE ORO: Ignorar contenedores SVG, solo leer sus hijos (rect, path)
-      if (tag === 'SVG') return null;
+      if (tag === 'SVG') return null; // Ignorar contenedores SVG
 
       const style = window.getComputedStyle(el);
       const ignore = ['rgba(0, 0, 0, 0)', 'transparent', 'none', 'currentColor', 'inherit'];
 
-      // 1. Fill (Solo elementos de dibujo)
+      // 1. Fill
       if (['PATH', 'RECT', 'CIRCLE', 'ELLIPSE', 'POLYGON'].includes(tag)) {
         const fill = el.getAttribute('fill') || style.fill;
         if (fill && !ignore.includes(fill)) return fill;
       }
-
       // 2. Background
       const bg = style.backgroundColor;
       if (bg && !ignore.includes(bg)) {
-        if (tag === 'DIV' && !el.className && bg === 'rgb(0, 0, 0)') return null; // Ignorar divs genéricos negros
+        if (tag === 'DIV' && !el.className && bg === 'rgb(0, 0, 0)') return null;
         return bg;
       }
-
       return null;
     };
 
@@ -69,17 +65,18 @@
       player.classList.add('widget-audio-player-customized');
       player.setAttribute('data-custom-initialized', 'true');
 
+      // Helper para obtener color seguro (si falta uno, usa el último disponible)
       const getC = (i) => colors[i] || colors[colors.length - 1];
 
       // 1. Fondo
-      if (colors.length > 0) {
-        player.style.setProperty('background-color', getC(0), 'important');
-        player.style.setProperty('background', getC(0), 'important');
+      if (colors[0]) {
+        player.style.setProperty('background-color', colors[0], 'important');
+        player.style.setProperty('background', colors[0], 'important');
       }
       // 2. Botones
-      if (colors.length > 1) {
+      if (colors[1]) {
         const cBtn = getC(1);
-        const cTxt = colors.length > 3 ? getC(3) : '#fff';
+        const cTxt = colors[3] || '#fff'; // Texto dentro del botón (usa el color de texto general si hay, o blanco)
         player.querySelectorAll('button, .audio-button, div[role="button"]').forEach(b => {
           b.style.setProperty('background-color', cBtn, 'important');
           b.style.setProperty('color', cTxt, 'important');
@@ -87,7 +84,7 @@
         });
       }
       // 3. Barra
-      if (colors.length > 2) {
+      if (colors[2]) {
         const cProg = getC(2);
         player.querySelectorAll('input[type="range"], progress').forEach(b => {
           b.style.setProperty('accent-color', cProg, 'important');
@@ -103,7 +100,7 @@
         document.head.appendChild(st);
       }
       // 4. Texto
-      if (colors.length > 3) {
+      if (colors[3]) {
         const cTx = getC(3);
         player.style.setProperty('color', cTx, 'important');
         player.querySelectorAll('*:not(button *)').forEach(el => el.style.setProperty('color', cTx, 'important'));
@@ -115,6 +112,13 @@
       const configs = document.querySelectorAll('[id^="custom-audio-player"]');
 
       configs.forEach(config => {
+        // --- MODO MANUAL (Data Attributes) ---
+        const manualBg = config.getAttribute('data-audio-bg-color');
+        const manualBtn = config.getAttribute('data-audio-btn-color');
+        const manualProg = config.getAttribute('data-audio-prog-color');
+        const manualText = config.getAttribute('data-audio-text-color');
+
+        // Buscar grupo y audio...
         let wrapper = config;
         while (wrapper.parentElement && wrapper.parentElement.tagName !== 'BODY' && !wrapper.parentElement.classList.contains('genially-view-item')) {
           wrapper = wrapper.parentElement;
@@ -136,6 +140,29 @@
         }
 
         if (group && audio) {
+          // 1. CHEQUEO PRIORITARIO: ¿Hay colores manuales?
+          if (manualBg || manualBtn || manualProg || manualText) {
+            log('Detectada configuración manual por atributos.');
+            const manualPalette = [
+              manualBg,
+              manualBtn,
+              manualProg,
+              manualText
+            ].filter(c => c); // Filtrar nulos
+
+            // Reconstruir array completo rellenando huecos si es necesario
+            // (Simplemente pasamos el array disperso, applyStyles se encarga del fallback)
+            const finalManual = [];
+            if (manualBg) finalManual[0] = manualBg;
+            if (manualBtn) finalManual[1] = manualBtn;
+            if (manualProg) finalManual[2] = manualProg;
+            if (manualText) finalManual[3] = manualText;
+
+            applyStyles(audio, finalManual);
+            return; // ¡TERMINAMOS AQUÍ PARA ESTE WIDGET! No escaneamos visualmente.
+          }
+
+          // 2. MODO VISUAL (Si no hubo manual)
           const allNodes = Array.from(group.querySelectorAll('*'));
           let visualObjects = [];
 
@@ -149,23 +176,22 @@
             if (color) {
               const rect = node.getBoundingClientRect();
               if (rect.width > 2 && rect.height > 2) {
-                visualObjects.push({
-                  color: color,
-                  x: rect.left
-                });
+                // log(`Visual: ${color} en ${node.tagName}`);
+                visualObjects.push({ color: color, x: rect.left });
               }
             }
           });
 
+          // Ordenar visualmente
           visualObjects.sort((a, b) => a.x - b.x);
 
+          // Filtrar paleta
           let palette = [];
           visualObjects.forEach(obj => {
             if (palette.length === 0 || palette[palette.length - 1] !== obj.color) {
               palette.push(obj.color);
             }
           });
-
           palette = [...new Set(palette)];
 
           if (palette.length > 0) {

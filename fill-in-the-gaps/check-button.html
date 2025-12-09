@@ -1,312 +1,143 @@
+<!-- BOTÓN VALIDAR V3.2 - HÍBRIDO PERFECTO -->
+<!-- Mantiene feedback letra a letra y animaciones, pero usa la lógica visual robusta del original -->
+
+<div style="width:100%; height:100%; cursor:pointer;" id="BoutonValidation">
+	<div style="width:100%; height:100%; background:transparent;"></div>
+</div>
+
 <script>
-	/* --------------------------------------------------------------
-	SCRIPT DE VALIDACIÓN (CHECK BUTTON) V2.7 HÍBRIDO FIXED
-	- Compatible con modo original y modo con persistencia
-	- Detección inteligente de actividad
-	- Feedback avanzado opcional
-	- RESETEA feedback antes de cada validación
-	-------------------------------------------------------------- */
+	// --- TUS VARIABLES ---
+	var solution = ["test"];
+	var ordre = 1; var espace = 1; var casse = 0; var correct = 1;
+	var tentative = 0; var maxtentative = 0; var unefois = 0;
 
-	// --- VARIABLES DE USUARIO ---
-	var solution = ["test"]; // Ingrese sus respuestas esperadas
-	var ordre = 1;         // 1: orden importante, 0: orden no importa
-	var espace = 1;        // 1: ignorar espacios inicio/fin
-	var casse = 0;         // 1: distinguir mayúsculas/minúsculas
-	var correct = 1;       // 1: mostrar errores (rojo/verde)
-	var tentative = 0;     // 1: mostrar contador de intentos
-	var maxtentative = 0;  // Máximo de intentos (0 = ilimitado)
-	var unefois = 0;       // 1: bloquear tras un intento
-
-	// --- VARIABLES INTERNAS ---
-	var ellipseFillColor = 'green';
-	try {
-		const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
-		if (svgElement) {
-			const ellipse = svgElement.querySelector('ellipse.color1');
-			if (ellipse) ellipseFillColor = ellipse.getAttribute('fill');
-		}
-	} catch (e) { }
-
-	// Helpers locales
+	// --- FUNCIONES HELPER ORIGINALES (Para asegurar compatibilidad visual) ---
 	function getParent(name) {
-		var pnode = document.getElementById(name);
-		if (!pnode) return null;
-		pnode = pnode.parentNode.parentNode.parentNode;
-		while (pnode && pnode.getAttribute('id') == null) {
-			pnode = pnode.parentNode;
-		}
+		var el = document.getElementById(name);
+		if (!el) return null;
+		var pnode = el.parentNode.parentNode.parentNode;
+		while (pnode && pnode.getAttribute('id') == null) { pnode = pnode.parentNode; }
 		return pnode ? pnode.parentNode.parentNode : null;
 	}
 
-	function getTexte(name) {
-		var pnode = getParent(name);
-		if (!pnode) return null;
-		if (pnode.querySelector('font')) return pnode.querySelector('font');
-		if (pnode.querySelector('.genially-view-text div')) return pnode.querySelector('.genially-view-text div');
-		return pnode.querySelector('.genially-view-text');
+	// Función Helper Mía para encontrar todos los widgets
+	function toggleAll(cls, show) {
+		var els = document.querySelectorAll(cls);
+		for (var i = 0; i < els.length; i++) {
+			// Subir niveles hasta encontrar el contenedor ocultable de Genially
+			var p = els[i];
+			// Intentamos subir 4 o 5 niveles como hace el script original
+			try {
+				if (p.closest('.genially-view-item')) {
+					p.closest('.genially-view-item').style.display = show ? 'block' : 'none';
+				} else {
+					// Fallback manual si closest no va o estructura rara
+					p.parentNode.parentNode.parentNode.parentNode.parentNode.style.display = show ? 'block' : 'none';
+				}
+			} catch (e) { }
+		}
 	}
 
-	// --- LÓGICA PRINCIPAL ---
 	(function () {
-		// Detectar actividad - MEJORADO
-		let activityId = window.lastInteractedActivity || window.currentActivityId;
-		let initWidget = null;
+		var btn = document.getElementById('BoutonValidation');
+		btn.addEventListener('click', function (e) {
+			e.stopPropagation();
+			validar();
+		});
 
-		if (activityId) {
-			// Buscar por ID de actividad en elementos INITcouise
-			initWidget = document.querySelector(`[id^="INITcouise"][data-activity-id="${activityId}"]`);
-		}
-
-		if (!initWidget) {
-			// Buscar cualquier elemento INITcouise
-			initWidget = document.querySelector('[id^="INITcouise"]');
-			if (!initWidget) {
-				initWidget = document.getElementById('INITcouise');
+		function validar() {
+			// 1. LIMPIEZA TOTAL (Al estilo original)
+			if (document.getElementById('boncouise')) {
+				var p = getParent('boncouise');
+				if (p) p.style.display = "none";
 			}
-			if (initWidget) {
-				activityId = initWidget.getAttribute('data-activity-id') || 'act1';
+			if (document.getElementById('erreurcouise')) {
+				var p = getParent('erreurcouise');
+				if (p) p.style.display = "none";
 			}
-		}
-
-		if (!initWidget || !activityId) {
-			console.error('[CHECK-BUTTON] No se encontró el widget INITcouise');
-			return;
-		}
-
-		// Detectar si la persistencia está activada - MEJORADO CON DEBUG
-		const persistAttr = initWidget.getAttribute('data-persist');
-		const persistEnabled = persistAttr === 'true';
-
-		console.log(`[CHECK-BUTTON] Actividad: ${activityId} | Persistencia: ${persistEnabled ? 'ON' : 'OFF'} | data-persist="${persistAttr}"`);
-
-		// Helper para crear claves de storage
-		const createStorageKey = (key) => {
-			const keyMap = {
-				'fois': 'intentos',
-				'bloc': 'bloqueado',
-				'faux': 'resultado',
-				'niet': 'estado'
-			};
-			const readableKey = keyMap[key] || key;
-			return `${activityId}_${readableKey}`;
-		};
-
-		var stop = createStorageKey('niet');
-		var niet = sessionStorage.getItem(stop) || 0;
-
-		var BON = document.getElementById('boncouise') ? getParent('boncouise') : null;
-		var PASBON = document.getElementById('erreurcouise') ? getParent('erreurcouise') : null;
-		var MASQUE = document.getElementById('masquecouise') ? getParent('masquecouise') : null;
-
-		// Cerrar modal de Genially
-		setTimeout(function () {
-			var closeBtn = document.getElementsByClassName('icon-close')[0];
-			if (closeBtn) closeBtn.click();
-		}, 10);
-		var modal = document.getElementById('genially-view-modal');
-		if (modal) modal.style.visibility = "hidden";
-
-		// Recuperar respuestas
-		var reponse = [];
-		const allWidgets = document.querySelectorAll('[id^="INITcouise"]');
-		const useUniqueIds = allWidgets.length > 1;
-
-		for (var i = 1; i <= solution.length; i++) {
-			let questionId;
-			let el;
-
-			if (useUniqueIds) {
-				questionId = `${activityId}_resp${i}`;
-				el = document.getElementById(questionId);
+			if (document.getElementById('masquecouise')) {
+				var p = getParent('masquecouise');
+				if (p) p.style.display = "none";
 			}
 
-			if (!el) {
-				questionId = `q${i}`;
-				el = document.getElementById(questionId);
+			// Limpiar clases globales también
+			toggleAll('.boncouise', false);
+			toggleAll('.erreurcouise', false);
+			toggleAll('.masquecouise', false);
+
+			// 2. DETECTAR ACTIVIDAD (Nuestra logica mejorada)
+			let actId = window.lastInteractedActivity || window.currentActivityId;
+			if (!actId) {
+				var inp = document.querySelector('input.question');
+				if (inp) actId = inp.getAttribute('data-activity-id');
 			}
+			if (!actId) actId = 'act1'; // Fallback
 
-			var val = el ? el.value : "";
-			if (espace == 1) val = val.trim();
-			reponse.push(val);
-		}
-
-		console.log(`[CHECK-BUTTON] ${reponse.length} respuestas recuperadas`);
-
-		// Gestión de intentos
-		if (tentative == 1) {
-			var stockage = createStorageKey('fois');
-			var blocage = createStorageKey('bloc');
-
-			if (sessionStorage.getItem(stockage) == null) sessionStorage.setItem(stockage, 0);
-			var fois = parseInt(sessionStorage.getItem(stockage), 10);
-
-			if ((maxtentative != 0 && fois < maxtentative && niet != 1) || (maxtentative == 0 && niet != 1)) {
-				fois++;
-				var txtTentative = getTexte('tentativecouise');
-				if (txtTentative) txtTentative.innerHTML = fois;
-				sessionStorage.setItem(stockage, fois);
-				console.log(`[CHECK-BUTTON] Intento #${fois}`);
-			} else {
-				niet = 1;
-				console.log(`[CHECK-BUTTON] Máximo de intentos alcanzado`);
-			}
-
-			if (unefois == 1) {
-				sessionStorage.setItem(blocage, unefois);
-			}
-		}
-
-		// Validación
-		if (niet == 0) {
+			// 3. VALIDAR (Nuestra lógica mejorada + Feedback Letras)
 			var faux = 0;
+			var reponse = [];
 
-			var solProc = solution.slice();
-			var repProc = reponse.slice();
+			for (var i = 1; i <= solution.length; i++) {
+				var el = document.getElementById(actId + '_resp' + i) || document.getElementById('q' + i);
+				var val = el ? el.value : "";
+				if (espace == 1) val = val.trim();
+				reponse.push(val);
 
-			if (casse != 1) {
-				for (var b = 0; b < solProc.length; b++) {
-					solProc[b] = solProc[b].toUpperCase();
-					repProc[b] = repProc[b].toUpperCase();
-				}
-			}
+				// Color Reset
+				if (el) el.style.color = '';
 
-			// ⭐ LIMPIAR FEEDBACK ANTERIOR ANTES DE VALIDAR (MEJORADO CON SEGURIDAD)
-			console.log('[CHECK-BUTTON] Limpiando feedback anterior...');
-			try {
-				for (var c = 0; c < solution.length; c++) {
-					let cleanId = useUniqueIds ? `${activityId}_resp${c + 1}` : `q${c + 1}`;
-					var cleanEl = document.getElementById(cleanId);
+				// Comparar
+				var sol = solution[i - 1];
+				var uVal = val;
+				if (casse != 1) { sol = sol.toUpperCase(); uVal = uVal.toUpperCase(); }
 
-					if (!cleanEl && useUniqueIds) {
-						cleanId = `q${c + 1}`;
-						cleanEl = document.getElementById(cleanId);
-					}
+				var isRight = false;
+				var alts = sol.split('|');
+				if (alts.indexOf(uVal) !== -1) isRight = true;
 
-					if (cleanEl) {
-						// Resetear color
-						cleanEl.style.color = '';
-
-						// Remover tooltips (con múltiples métodos por seguridad)
-						if (typeof window.removeCharFeedback === 'function') {
-							window.removeCharFeedback(cleanId);
-						}
-						// También remover elementos DOM directamente
-						const oldFeedback = document.getElementById(`${cleanId}-feedback`);
-						if (oldFeedback) oldFeedback.remove();
-					}
-				}
-				console.log('[CHECK-BUTTON] Feedback limpiado correctamente');
-			} catch (cleanError) {
-				console.log(`[CHECK-BUTTON] Error al limpiar (no crítico): ${cleanError.message}`);
-			}
-
-			// Comparación
-			for (var a = 0; a < solProc.length; a++) {
-				let questionId = useUniqueIds ? `${activityId}_resp${a + 1}` : `q${a + 1}`;
-				var elQuestion = document.getElementById(questionId);
-
-				if (!elQuestion && useUniqueIds) {
-					questionId = `q${a + 1}`;
-					elQuestion = document.getElementById(questionId);
-				}
-
-				var userVal = repProc[a];
-				var correctVal = solProc[a];
-
-				var isCorrect = false;
-				var alternatives = correctVal.split('|');
-
-				if (ordre != 1) {
-					for (var k = 0; k < solProc.length; k++) {
-						var alts = solProc[k].split('|');
-						if (alts.includes(userVal)) {
-							isCorrect = true;
-							break;
-						}
-					}
-				} else {
-					isCorrect = alternatives.includes(userVal);
-				}
-
-				if (!isCorrect) {
+				if (!isRight) {
 					faux = 1;
-					if (correct == 1 && elQuestion) {
-						elQuestion.style.color = 'red';
-
-						// Solo mostrar feedback letra por letra si hay persistencia
-						if (persistEnabled && typeof window.showCharFeedback === 'function') {
-							try {
-								window.showCharFeedback(questionId, reponse[a], solution[a]);
-							} catch (e) {
-								console.log('[CHECK-BUTTON] Error mostrando feedback: ' + e.message);
-							}
-						}
+					if (correct == 1 && el) {
+						el.style.color = 'red';
+						// AQUÍ RECUPERAMOS EL FEEDBACK LETRA A LETRA
+						if (window.showCharFeedback) window.showCharFeedback(el.id, reponse[i - 1], solution[i - 1]);
 					}
 				} else {
-					if (correct == 1 && elQuestion) {
-						elQuestion.style.color = ellipseFillColor;
+					if (correct == 1 && el) {
+						el.style.color = 'green';
+						if (window.removeCharFeedback) window.removeCharFeedback(el.id);
 					}
 				}
 			}
 
-			// Guardar resultado
-			var resultat = createStorageKey('faux');
-			sessionStorage.setItem(resultat, faux);
+			// 4. MOSTRAR RESULTADO (Lógica Original Visual)
+			setTimeout(function () {
+				if (faux == 1) {
+					if (document.getElementById('erreurcouise')) {
+						var p = getParent('erreurcouise');
+						if (p) p.style.display = "block";
+					}
+					if (document.getElementById('masquecouise')) {
+						var p = getParent('masquecouise');
+						if (p) p.style.display = "block";
+					}
+					toggleAll('.erreurcouise', true);
+					toggleAll('.masquecouise', true);
 
-			const findParentContainer = (element) => {
-				if (!element) return null;
-				let pnode = element.parentNode.parentNode.parentNode;
-				while (pnode && pnode.getAttribute("id") == null) {
-					pnode = pnode.parentNode;
+					// Disparar evento de incorrección (para animaciones custom)
+					if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, false);
+
+				} else {
+					if (document.getElementById('boncouise')) {
+						var p = getParent('boncouise');
+						if (p) p.style.display = "block";
+					}
+					toggleAll('.boncouise', true);
+
+					// Disparar evento de corrección
+					if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, true);
 				}
-				return pnode ? pnode.parentNode.parentNode : null;
-			};
-
-			let activityContainer = null;
-			if (initWidget) {
-				activityContainer = initWidget.parentNode;
-				for (let i = 0; i < 6; i++) {
-					if (activityContainer.parentNode) activityContainer = activityContainer.parentNode;
-				}
-			}
-
-			var toggleGroup = function (cls, show) {
-				var context = activityContainer || document;
-				var els = context.querySelectorAll('.' + cls);
-
-				if (els.length === 0 && context !== document) {
-					els = document.querySelectorAll('.' + cls);
-				}
-
-				els.forEach(function (e) {
-					var p = findParentContainer(e);
-					if (p) p.style.display = show ? 'block' : 'none';
-				});
-			};
-
-			if (faux == 1) {
-				console.log('[CHECK-BUTTON] Respuesta incorrecta');
-				toggleGroup('boncouise', false);
-				toggleGroup('erreurcouise', true);
-				toggleGroup('masquecouise', true);
-				if (PASBON) PASBON.style.display = "block";
-				if (BON) BON.style.display = "none";
-				if (MASQUE) MASQUE.style.display = "block";
-			} else {
-				console.log('[CHECK-BUTTON] Respuesta correcta');
-				toggleGroup('boncouise', true);
-				toggleGroup('erreurcouise', false);
-				toggleGroup('masquecouise', false);
-				if (BON) BON.style.display = "block";
-				if (PASBON) PASBON.style.display = "none";
-				if (MASQUE) MASQUE.style.display = "none";
-
-				if (unefois == 1) {
-					sessionStorage.setItem(stop, 1);
-				}
-			}
-		} else {
-			console.log('[CHECK-BUTTON] Actividad bloqueada');
+			}, 100);
 		}
 	})();
 </script>
