@@ -1,17 +1,96 @@
-<!-- BOTÓN VALIDAR V3.2 - HÍBRIDO PERFECTO -->
-<!-- Mantiene feedback letra a letra y animaciones, pero usa la lógica visual robusta del original -->
+<!-- BOTÓN VALIDAR V3.9 - HYBRID LOGIC & TRANSPARENCY & USER LOGIC -->
+<style>
+	html,
+	body {
+		margin: 0;
+		padding: 0;
+		background-color: transparent !important;
+		overflow: hidden;
+	}
 
-<div style="width:100%; height:100%; cursor:pointer;" id="BoutonValidation">
-	<div style="width:100%; height:100%; background:transparent;"></div>
-</div>
+	#BoutonValidation {
+		width: 100%;
+		height: 100%;
+		cursor: pointer;
+		background: transparent;
+	}
+</style>
+
+<div id="BoutonValidation"></div>
 
 <script>
-	// --- TUS VARIABLES ---
-	var solution = ["test"];
+	//-----VARIABLES UTILISATEUR----    
+	var solution = ["test"]; // RELLENADO AUTOMATICAMENTE LUEGO
 	var ordre = 1; var espace = 1; var casse = 0; var correct = 1;
 	var tentative = 0; var maxtentative = 0; var unefois = 0;
 
-	// --- FUNCIONES HELPER ORIGINALES (Para asegurar compatibilidad visual) ---
+	// --- FUNCIONES EXTRA: COLOR FINDER (Mantiene tu funcionalidad de colores) ---
+	function extractColor(el) {
+		if (!el) return null;
+		var style = window.getComputedStyle(el);
+		var ignore = ['rgba(0, 0, 0, 0)', 'transparent', 'none', 'currentColor', 'inherit'];
+		var bg = style.backgroundColor;
+		if (bg && ignore.indexOf(bg) === -1) return bg;
+		var fill = el.getAttribute('fill') || style.fill;
+		if (fill && ignore.indexOf(fill) === -1) return fill;
+		return null;
+	}
+
+	function extractRole(el) {
+		if (!el) return null;
+		var txt = (el.textContent || el.innerText || "").toLowerCase();
+		if (txt.indexOf('id-bien') !== -1 || txt.indexOf('id-correct') !== -1) return 'correct';
+		if (txt.indexOf('id-mal') !== -1 || txt.indexOf('id-incorrect') !== -1) return 'incorrect';
+		return null;
+	}
+
+	function getColorsFromGroup(initWidget, actId) {
+		var config = { correct: 'green', incorrect: 'red' }; // Colores por defecto
+		if (!initWidget) return config;
+
+		// Subir hasta encontrar el wrapper o el item
+		var container = initWidget;
+		var limit = 6;
+		while (container.parentNode && limit > 0 && !container.classList.contains('genially-view-item')) {
+			container = container.parentNode;
+			limit--;
+		}
+		if (!container.classList.contains('genially-view-item')) {
+			container = initWidget.parentNode.parentNode || initWidget.parentNode;
+		}
+
+		var allNodes = container.querySelectorAll('*');
+		for (var i = 0; i < allNodes.length; i++) {
+			var node = allNodes[i];
+			if (node.tagName === 'SCRIPT' || node === initWidget) continue;
+
+			var role = extractRole(node);
+			if (role) {
+				var col = extractColor(node);
+				// Ultra Finder: Si el nodo de texto es transparente, busca en sus hermanos/padre
+				if (!col) {
+					var p = node.parentNode;
+					var boxConfig = null;
+					var dist = 0;
+					while (p && dist < 4 && !p.classList.contains('genially-view-item')) { boxConfig = p; p = p.parentNode; dist++; }
+
+					if (boxConfig || p) {
+						var context = boxConfig || p;
+						var siblings = context.querySelectorAll('*');
+						for (var j = 0; j < siblings.length; j++) {
+							var sib = siblings[j];
+							if (sib === node || sib.contains(node)) continue;
+							var sibCol = extractColor(sib);
+							if (sibCol) { col = sibCol; break; }
+						}
+					}
+				}
+				if (col) config[role] = col;
+			}
+		}
+		return config;
+	}
+
 	function getParent(name) {
 		var el = document.getElementById(name);
 		if (!el) return null;
@@ -20,124 +99,186 @@
 		return pnode ? pnode.parentNode.parentNode : null;
 	}
 
-	// Función Helper Mía para encontrar todos los widgets
-	function toggleAll(cls, show) {
-		var els = document.querySelectorAll(cls);
+	// Función robusta para ocultar/mostrar elementos (compatible con tu script original)
+	function toggleDisplay(cls, displayVal) {
+		var els = document.querySelectorAll('.' + cls);
 		for (var i = 0; i < els.length; i++) {
-			// Subir niveles hasta encontrar el contenedor ocultable de Genially
 			var p = els[i];
-			// Intentamos subir 4 o 5 niveles como hace el script original
-			try {
-				if (p.closest('.genially-view-item')) {
-					p.closest('.genially-view-item').style.display = show ? 'block' : 'none';
-				} else {
-					// Fallback manual si closest no va o estructura rara
-					p.parentNode.parentNode.parentNode.parentNode.parentNode.style.display = show ? 'block' : 'none';
-				}
-			} catch (e) { }
+			var d = 0;
+			// Busca hacia arriba hasta encontrar el contenedor de item de Genially
+			while (p && !p.classList.contains('genially-view-item') && d < 10) { p = p.parentNode; d++; }
+			if (p) p.style.display = displayVal;
 		}
 	}
 
+	// --- LOGICA DE VALIDACIÓN ---
 	(function () {
 		var btn = document.getElementById('BoutonValidation');
 		btn.addEventListener('click', function (e) {
 			e.stopPropagation();
-			validar();
-		});
 
-		function validar() {
-			// 1. LIMPIEZA TOTAL (Al estilo original)
-			if (document.getElementById('boncouise')) {
-				var p = getParent('boncouise');
-				if (p) p.style.display = "none";
-			}
-			if (document.getElementById('erreurcouise')) {
-				var p = getParent('erreurcouise');
-				if (p) p.style.display = "none";
-			}
-			if (document.getElementById('masquecouise')) {
-				var p = getParent('masquecouise');
-				if (p) p.style.display = "none";
-			}
-
-			// Limpiar clases globales también
-			toggleAll('.boncouise', false);
-			toggleAll('.erreurcouise', false);
-			toggleAll('.masquecouise', false);
-
-			// 2. DETECTAR ACTIVIDAD (Nuestra logica mejorada)
-			let actId = window.lastInteractedActivity || window.currentActivityId;
+			// 1. Detección de Actividad
+			var actId = window.lastInteractedActivity || window.currentActivityId;
 			if (!actId) {
 				var inp = document.querySelector('input.question');
 				if (inp) actId = inp.getAttribute('data-activity-id');
 			}
-			if (!actId) actId = 'act1'; // Fallback
+			if (!actId) actId = "act1";
 
-			// 3. VALIDAR (Nuestra lógica mejorada + Feedback Letras)
-			var faux = 0;
+			// 2. Extracción de Colores
+			var initWidget = document.querySelector(`[id^="INITcouise"][data-activity-id="${actId}"]`) || document.getElementById('INITcouise');
+			var cols = getColorsFromGroup(initWidget, actId);
+
+			// 3. Variables de Referencia (Copiadas de tu script original)
+			// Necesitamos un "refpage" para el storage. Usamos el INIT como ancla.
+			var refpage = "PAGE_DEFAULT";
+			if (initWidget) {
+				var refparent = initWidget;
+				var d = 0;
+				while (refparent.parentNode && d < 10) {
+					refparent = refparent.parentNode;
+					if (refparent.id && refparent.id.length > 5) { refpage = refparent.id; break; }
+					d++;
+				}
+			}
+
+			var stop = 'niet' + refpage + '_' + actId; // Unique per activity
+			var niet = sessionStorage.getItem(stop) ? parseInt(sessionStorage.getItem(stop)) : 0;
 			var reponse = [];
+			var faux = 0;
 
+			// Reset Visuals
+			toggleDisplay('boncouise', 'none');
+			toggleDisplay('erreurcouise', 'none');
+			toggleDisplay('masquecouise', 'none');
+			if (document.getElementById('boncouise')) { var p = getParent('boncouise'); if (p) p.style.display = "none"; }
+			if (document.getElementById('erreurcouise')) { var p = getParent('erreurcouise'); if (p) p.style.display = "none"; }
+			if (document.getElementById('masquecouise')) { var p = getParent('masquecouise'); if (p) p.style.display = "none"; }
+
+			// Recoger respuestas
+			// Asumimos que solution ya tiene la longitud correcta o nos basamos en inputs
+			// Mapeamos inputs usando actId
 			for (var i = 1; i <= solution.length; i++) {
 				var el = document.getElementById(actId + '_resp' + i) || document.getElementById('q' + i);
 				var val = el ? el.value : "";
 				if (espace == 1) val = val.trim();
 				reponse.push(val);
+				if (el) el.style.color = ''; // Reset color
+			}
 
-				// Color Reset
-				if (el) el.style.color = '';
+			// Tentativas
+			if (tentative == 1) {
+				var stockage = 'fois' + refpage + '_' + actId;
+				if (!sessionStorage.getItem(stockage)) sessionStorage.setItem(stockage, 0);
+				var fois = parseInt(sessionStorage.getItem(stockage), 10);
 
-				// Comparar
-				var sol = solution[i - 1];
-				var uVal = val;
-				if (casse != 1) { sol = sol.toUpperCase(); uVal = uVal.toUpperCase(); }
-
-				var isRight = false;
-				var alts = sol.split('|');
-				if (alts.indexOf(uVal) !== -1) isRight = true;
-
-				if (!isRight) {
-					faux = 1;
-					if (correct == 1 && el) {
-						el.style.color = 'red';
-						// AQUÍ RECUPERAMOS EL FEEDBACK LETRA A LETRA
-						if (window.showCharFeedback) window.showCharFeedback(el.id, reponse[i - 1], solution[i - 1]);
+				if (((maxtentative != 0) && (fois < maxtentative) && (niet != 1)) || ((maxtentative == 0) && (niet != 1))) {
+					fois++;
+					// Si existe el contador de tentativas, actualizalo
+					var tentEl = document.getElementById('tentativecouise'); // O usar clase
+					if (tentEl && tentEl.querySelector && tentEl.querySelector('.genially-view-text')) {
+						tentEl.querySelector('.genially-view-text').innerHTML = fois;
 					}
+					sessionStorage.setItem(stockage, fois);
 				} else {
-					if (correct == 1 && el) {
-						el.style.color = 'green';
-						if (window.removeCharFeedback) window.removeCharFeedback(el.id);
-					}
+					niet = 1;
+				}
+
+				if (unefois == 1) {
+					// lógica un solo uso
+					var blocage = 'bloc' + refpage + '_' + actId;
+					sessionStorage.setItem(blocage, unefois);
 				}
 			}
 
-			// 4. MOSTRAR RESULTADO (Lógica Original Visual)
-			setTimeout(function () {
-				if (faux == 1) {
-					if (document.getElementById('erreurcouise')) {
-						var p = getParent('erreurcouise');
-						if (p) p.style.display = "block";
+			if (niet == 0) {
+				// --- CORE VALIDATION LOGIC (Adapted from original) ---
+				if (casse != 1) {
+					for (var b = 0; b < solution.length; b++) {
+						reponse[b] = reponse[b].toUpperCase();
 					}
-					if (document.getElementById('masquecouise')) {
-						var p = getParent('masquecouise');
-						if (p) p.style.display = "block";
-					}
-					toggleAll('.erreurcouise', true);
-					toggleAll('.masquecouise', true);
-
-					// Disparar evento de incorrección (para animaciones custom)
-					if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, false);
-
+					// No mutar solution original pues afecta reintentos, usar copia
+					var solCopy = solution.map(s => s.toUpperCase());
 				} else {
-					if (document.getElementById('boncouise')) {
-						var p = getParent('boncouise');
-						if (p) p.style.display = "block";
-					}
-					toggleAll('.boncouise', true);
-
-					// Disparar evento de corrección
-					if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, true);
+					var solCopy = [...solution];
 				}
-			}, 100);
-		}
+
+				if (ordre != 1) {
+					// Sin orden
+					// Clonamos array respuestas usadas para no repetir
+					var repUsadas = new Array(reponse.length).fill(false);
+					var inputsCorrectos = new Array(reponse.length).fill(false);
+
+					// Simple check: Ver si cada respuesta encaja en alguna solucion disponible
+					// Nota: El original tiene "match and splice". 
+					var solDisponibles = [...solCopy];
+
+					for (var a = 0; a < reponse.length; a++) {
+						var b = a + 1;
+						var el = document.getElementById(actId + '_resp' + b) || document.getElementById('q' + b);
+						var userVal = reponse[a];
+						var found = false;
+
+						for (var k = 0; k < solDisponibles.length; k++) {
+							var alts = solDisponibles[k].split('|');
+							if (alts.includes(userVal)) {
+								found = true;
+								solDisponibles.splice(k, 1);
+								break;
+							}
+						}
+
+						if (!found) {
+							faux = 1;
+							if (correct == 1 && el) {
+								el.style.color = cols.incorrect; // OUR COLOR
+								// Feedback char removed for simplicity/compat unless requested
+							}
+						} else {
+							if (correct == 1 && el) el.style.color = cols.correct; // OUR COLOR
+						}
+					}
+					if (solDisponibles.length > 0) faux = 1; // Faltan inputs
+				} else {
+					// Con orden
+					for (var a = 0; a < solCopy.length; a++) {
+						var b = a + 1;
+						var el = document.getElementById(actId + '_resp' + b) || document.getElementById('q' + b);
+						var uVal = reponse[a];
+						var alts = solCopy[a].split('|');
+						var isRight = alts.includes(uVal);
+
+						if (!isRight) {
+							faux = 1;
+							if (correct == 1 && el) {
+								el.style.color = cols.incorrect;
+								if (window.showCharFeedback) window.showCharFeedback(el.id, reponse[a], solution[a]);
+							}
+						} else {
+							if (correct == 1 && el) {
+								el.style.color = cols.correct;
+								if (window.removeCharFeedback) window.removeCharFeedback(el.id);
+							}
+						}
+					}
+				}
+
+				// Final Visuals
+				setTimeout(function () {
+					if (faux == 1) {
+						toggleDisplay('erreurcouise', 'block');
+						toggleDisplay('masquecouise', 'block');
+						if (document.getElementById('erreurcouise')) { var p = getParent('erreurcouise'); if (p) p.style.display = "block"; }
+						if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, false);
+					} else {
+						toggleDisplay('boncouise', 'block');
+						if (document.getElementById('boncouise')) { var p = getParent('boncouise'); if (p) p.style.display = "block"; }
+						if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, true);
+
+						if (unefois == 1) sessionStorage.setItem(stop, 1);
+					}
+				}, 100);
+			}
+		});
 	})();
 </script>

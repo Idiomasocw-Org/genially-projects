@@ -4,17 +4,15 @@
     background-color: black;
     color: white;
   ">
-  INITIALISATION-COUISE V2.7 (HYBRID)<br />
+  INITIALISATION-COUISE V2.9 (ANTI-FLASH)<br />
   (Numera los campos y gestiona respuestas)<br />
   <small>ID: <span class="activity-id-display"></span> | Persistencia: <span class="persist-status">OFF</span></small>
 </div>
 
 <script>
   /* --------------------------------------------------------------
-     PLUGIN "FILL-IN-THE-GAPS" V2.7 HÍBRIDO
-     - Mantiene compatibilidad 100% con versión original V2.4
-     - Añade persistencia OPCIONAL via data-persist="true"
-     - Sistema de múltiples actividades con IDs únicos
+     PLUGIN "FILL-IN-THE-GAPS" V2.9 - OPTIMIZACIÓN VISUAL
+     - MutationObserver inmediato para evitar parpadeo de configs
      -------------------------------------------------------------- */
 
   // ============================================================
@@ -23,17 +21,60 @@
   // ============================================================
 
   (function () {
-    // 0. Detectar widget y configuración
+    // 0. DETECCIÓN RÁPIDA Y ANTI-FLASH (LO PRIMERO)
+    // Solo si no estamos en editor
+    if (window.location.pathname.split('/')[1] !== 'editor') {
+      const hideConfigNodes = (nodeList) => {
+        nodeList.forEach(node => {
+          if (node.nodeType === 1) { // Elemento
+            // Caso 1: El nodo mismo tiene texto
+            if (node.textContent && node.children.length === 0) {
+              const txt = node.textContent.toLowerCase();
+              if (txt.includes('id-bien') || txt.includes('id-mal') || txt.includes('id-correct') || txt.includes('id-incorrect')) {
+                // Subir a contenedor visible
+                let p = node;
+                let levels = 0;
+                while (p && !p.classList.contains('genially-view-item') && levels < 6) { p = p.parentNode; levels++; }
+                if (p) { p.style.opacity = '0'; setTimeout(() => { p.style.display = 'none'; }, 50); } // Opacidad 0 es más rápido visualmente
+              }
+            }
+            // Caso 2: Buscar dentro del nodo (si es un contenedor grande recien añadido)
+            else {
+              // Micro-optimización: querySelectorAll es costoso en bucles grandes, pero necesario si añadieron un bloque entero
+              const candidates = node.querySelectorAll ? node.querySelectorAll('*') : [];
+              candidates.forEach(c => {
+                if (c.children.length === 0 && c.textContent) {
+                  const t = c.textContent.toLowerCase();
+                  if (t.includes('id-bien') || t.includes('id-mal')) {
+                    let p = c;
+                    let l = 0;
+                    while (p && !p.classList.contains('genially-view-item') && l < 6) { p = p.parentNode; l++; }
+                    if (p) { p.style.display = 'none'; }
+                  }
+                }
+              });
+            }
+          }
+        });
+      };
+
+      // Observador Ojo de Halcón: Vigila el DOM desde YA
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.addedNodes.length) hideConfigNodes(mutation.addedNodes);
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      // Barrido Inicial Inmediato
+      hideConfigNodes(Array.from(document.body.querySelectorAll('*')));
+    }
+
+
+    // RESTO DE INICIALIZACIÓN (Standard)
     const allWidgets = document.querySelectorAll('[id^="INITcouise"]');
     let initWidget = null;
-
-    // Buscar el primer widget sin inicializar
-    for (let w of allWidgets) {
-      if (!w.getAttribute('data-activity-id')) {
-        initWidget = w;
-        break;
-      }
-    }
+    for (let w of allWidgets) { if (!w.getAttribute('data-activity-id')) { initWidget = w; break; } }
     if (!initWidget) initWidget = document.getElementById('INITcouise');
 
     // Generar ID único para esta actividad
@@ -72,12 +113,9 @@
     // 1. Ocultar overlay de Genially 
     setTimeout(() => {
       const hideGeniallyOverlay = () => {
-        document.querySelectorAll('.ReactModalPortal, .ReactModal__Overlay')
-          .forEach(el => {
-            el.style.display = 'none';
-            el.style.opacity = '0';
-            el.style.pointerEvents = 'none';
-          });
+        document.querySelectorAll('.ReactModalPortal, .ReactModal__Overlay').forEach(el => {
+          el.style.display = 'none'; el.style.opacity = '0'; el.style.pointerEvents = 'none';
+        });
       };
       hideGeniallyOverlay();
       const observer = new MutationObserver(hideGeniallyOverlay);
@@ -118,9 +156,7 @@
     window.FITG.findParentContainer = (element) => {
       if (!element) return null;
       let pnode = element.parentNode.parentNode.parentNode;
-      while (pnode && pnode.getAttribute("id") == null) {
-        pnode = pnode.parentNode;
-      }
+      while (pnode && pnode.getAttribute("id") == null) { pnode = pnode.parentNode; }
       return pnode ? pnode.parentNode.parentNode : null;
     };
 
@@ -136,28 +172,24 @@
 
       if (initWidget) {
         let container = initWidget.parentNode;
-        // Subir 6 niveles
-        for (let i = 0; i < 6; i++) {
-          if (container.parentNode) container = container.parentNode;
-        }
+        for (let i = 0; i < 6; i++) { if (container.parentNode) container = container.parentNode; }
         activityContainer = container;
       }
 
-      const toggleGroupDisplay = (className, show) => {
-        let elements = activityContainer.querySelectorAll("." + className);
-        if (elements.length === 0) elements = document.querySelectorAll("." + className);
-
+      const toggleGroupDisplay = (cls, show) => {
+        let elements = activityContainer.querySelectorAll("." + cls);
+        if (elements.length === 0) elements = document.querySelectorAll("." + cls);
         elements.forEach(el => {
-          const parent = window.FITG.findParentContainer(el);
-          if (parent) parent.style.display = show ? "block" : "none";
+          const p = window.FITG.findParentContainer(el);
+          if (p) p.style.display = show ? "block" : "none";
         });
       };
 
-      const toggleElementDisplay = (id, show) => {
+      const toggleEl = (id, show) => {
         const el = document.getElementById(id);
         if (el) {
-          const parent = window.FITG.getParentById(id);
-          if (parent) parent.style.display = show ? "block" : "none";
+          const p = window.FITG.getParentById(id);
+          if (p) p.style.display = show ? "block" : "none";
         }
       };
 
@@ -166,166 +198,75 @@
         toggleGroupDisplay("boncouise", false);
         toggleGroupDisplay("erreurcouise", true);
         toggleGroupDisplay("masquecouise", true);
-        toggleElementDisplay("erreurcouise", true);
-        toggleElementDisplay("boncouise", false);
-        toggleElementDisplay("masquecouise", true);
+        toggleEl("erreurcouise", true);
+        toggleEl("boncouise", false);
+        toggleEl("masquecouise", true);
       } else {
         // Caso CORRECTO
         toggleGroupDisplay("boncouise", true);
         toggleGroupDisplay("erreurcouise", false);
         toggleGroupDisplay("masquecouise", false);
-        toggleElementDisplay("boncouise", true);
-        toggleElementDisplay("erreurcouise", false);
-        toggleElementDisplay("masquecouise", false);
+        toggleEl("boncouise", true);
+        toggleEl("erreurcouise", false);
+        toggleEl("masquecouise", false);
       }
     };
 
-    window.FITG.resetVisuals = (activityId) => {
-      // 1. Encontrar contenedor
-      const initWidget = document.querySelector(`[id^="INITcouise"][data-activity-id="${activityId}"]`) || document.getElementById('INITcouise');
-      let activityContainer = document;
-      if (initWidget) {
-        let container = initWidget.parentNode;
-        for (let i = 0; i < 6; i++) {
-          if (container.parentNode) container = container.parentNode;
-        }
-        activityContainer = container;
-      }
-
-      // 2. Ocultar todo
-      const hideVal = (name) => {
-        let elements = activityContainer.querySelectorAll("." + name);
-        if (elements.length === 0) elements = document.querySelectorAll("." + name);
+    window.FITG.resetVisuals = (actId) => {
+      const toggleGroupDisplay = (cls, show) => {
+        const elements = document.querySelectorAll("." + cls);
         elements.forEach(el => {
           const p = window.FITG.findParentContainer(el);
-          if (p) p.style.display = "none";
+          if (p) p.style.display = show ? "block" : "none";
         });
-
-        const el = document.getElementById(name);
-        if (el) {
-          const p = window.FITG.getParentById(name);
-          if (p) p.style.display = "none";
-        }
       };
 
-      hideVal("boncouise");
-      hideVal("erreurcouise");
-      hideVal("masquecouise");
-    };
-
-    window.FITG.resetVisuals = (activityId) => {
-      // 1. Encontrar contenedor
-      const initWidget = document.querySelector(`[id^="INITcouise"][data-activity-id="${activityId}"]`) || document.getElementById('INITcouise');
-      let activityContainer = document;
-      if (initWidget) {
-        let container = initWidget.parentNode;
-        for (let i = 0; i < 6; i++) {
-          if (container.parentNode) container = container.parentNode;
-        }
-        activityContainer = container;
-      }
-
-      // 2. Ocultar todo
-      const hideVal = (name) => {
-        let elements = activityContainer.querySelectorAll("." + name);
-        if (elements.length === 0) elements = document.querySelectorAll("." + name);
-        elements.forEach(el => {
-          const p = window.FITG.findParentContainer(el);
-          if (p) p.style.display = "none";
-        });
-
-        const el = document.getElementById(name);
-        if (el) {
-          const p = window.FITG.getParentById(name);
-          if (p) p.style.display = "none";
-        }
+      const toggleEl = (id, show) => {
+        const p = window.FITG.getParentById(id);
+        if (p) p.style.display = show ? "block" : "none";
       };
 
-      hideVal("boncouise");
-      hideVal("erreurcouise");
-      hideVal("masquecouise");
+      toggleGroupDisplay("boncouise", false);
+      toggleGroupDisplay("erreurcouise", false);
+      toggleGroupDisplay("masquecouise", false);
+      toggleEl("boncouise", false);
+      toggleEl("erreurcouise", false);
+      toggleEl("masquecouise", false);
     };
 
-    // 5. Lógica de visualización y Persistencia
-    const urlParts = window.location.pathname.split("/");
-    const refGenially = urlParts[1];
-
-    if (refGenially !== "editor") {
-      // MODO 1: SIN PERSISTENCIA 
+    // VISUALIZACIÓN
+    if (window.location.pathname.split('/')[1] !== 'editor') {
       if (!persistEnabled) {
-        questions.forEach(q => {
-          q.value = "";
-          q.setAttribute("value", "");
-        });
-        console.log('[FILL-IN-THE-GAPS] Campos limpiados (modo original)');
-      }
-
-      // MODO 2: CON PERSISTENCIA
-      else {
+        questions.forEach(q => { q.value = ""; q.setAttribute("value", ""); });
+      } else {
         questions.forEach(q => {
           const savedVal = sessionStorage.getItem(q.id);
-          if (savedVal !== null) {
-            q.value = savedVal;
-            q.setAttribute("value", savedVal);
-          } else {
-            q.value = "";
-            q.setAttribute("value", "");
-          }
-
-          q.addEventListener('input', (e) => {
-            sessionStorage.setItem(q.id, e.target.value);
-            window.lastInteractedActivity = activityId;
-          });
-
-          // MEJORA: Actualizar actividad al hacer click/focus
-          q.addEventListener('focus', (e) => {
-            window.lastInteractedActivity = activityId;
-          });
+          if (savedVal !== null) { q.value = savedVal; q.setAttribute("value", savedVal); }
+          else { q.value = ""; q.setAttribute("value", ""); }
+          q.addEventListener('input', (e) => { sessionStorage.setItem(q.id, e.target.value); window.lastInteractedActivity = activityId; });
+          q.addEventListener('focus', (e) => { window.lastInteractedActivity = activityId; });
         });
-        console.log('[FILL-IN-THE-GAPS] Persistencia activada - Respuestas guardadas');
-      }
 
-      // Restaurar estado visual si hay resultado guardado
-      const resultKey = createStorageKey("faux");
-      if (sessionStorage.getItem(resultKey) != null) {
-        const isFalse = sessionStorage.getItem(resultKey) == 1;
-        setTimeout(() => {
-          if (window.FITG && window.FITG.updateFeedback) {
-            window.FITG.updateFeedback(activityId, !isFalse);
-          }
-        }, 100);
+        const resultKey = createStorageKey("faux");
+        if (sessionStorage.getItem(resultKey) != null) {
+          const isFalse = sessionStorage.getItem(resultKey) == 1;
+          setTimeout(() => { if (window.FITG.updateFeedback) window.FITG.updateFeedback(activityId, !isFalse); }, 100);
+        }
       }
 
       // 6. Ocultar iniciales (Sólo en modo visualización para no estorbar editor)
       const initialHideInfo = () => {
-        const hideEl = (id) => {
-          const el = document.getElementById(id);
-          if (el) el.style.display = "none";
-        };
-        hideEl("INITcouise");
-        hideEl("boncouise");
-        hideEl("erreurcouise");
-        hideEl("masquecouise");
+        const hideId = (id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; };
+        hideId("INITcouise"); hideId("boncouise"); hideId("erreurcouise"); hideId("masquecouise");
 
-        const hideGrp = (cls) => {
-          const els = activityContainer.querySelectorAll("." + cls);
-          els.forEach(el => {
-            const p = window.FITG.findParentContainer(el);
-            if (p) p.style.display = "none";
-          });
+        const hideCls = (cls) => {
+          let els = activityContainer.querySelectorAll("." + cls);
+          if (els.length === 0) els = document.querySelectorAll("." + cls);
+          els.forEach(el => { const p = window.FITG.findParentContainer(el); if (p) p.style.display = "none"; });
         };
-        hideGrp("boncouise");
-        hideGrp("erreurcouise");
-        hideGrp("masquecouise");
-
-        if (document.getElementById("boncouise")) {
-          const p = window.FITG.getParentById("boncouise");
-          if (p) p.style.display = "none";
-        }
-        if (document.getElementById("erreurcouise")) {
-          const p = window.FITG.getParentById("erreurcouise");
-          if (p) p.style.display = "none";
-        }
+        hideCls("boncouise"); hideCls("erreurcouise"); hideCls("masquecouise");
+        if (document.getElementById("boncouise")) { const p = window.FITG.getParentById("boncouise"); if (p) p.style.display = "none"; }
+        if (document.getElementById("erreurcouise")) { const p = window.FITG.getParentById("erreurcouise"); if (p) p.style.display = "none"; }
       };
       initialHideInfo();
     }
@@ -341,19 +282,10 @@
         const feedback = document.createElement('div');
         feedback.id = `${inputId}-feedback`;
         Object.assign(feedback.style, {
-          position: 'absolute',
-          marginTop: '5px',
-          padding: '4px 8px',
-          background: '#fff',
-          border: '1px solid #e74c3c',
-          borderRadius: '4px',
-          zIndex: '10000',
-          fontSize: '14px',
-          fontFamily: 'monospace',
-          pointerEvents: 'none',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          whiteSpace: 'nowrap',
-          color: '#333'
+          position: 'absolute', marginTop: '5px', padding: '4px 8px', background: '#fff',
+          border: '1px solid #e74c3c', borderRadius: '4px', zIndex: '10000', fontSize: '14px',
+          fontFamily: 'monospace', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          whiteSpace: 'nowrap', color: '#333'
         });
 
         const rect = input.getBoundingClientRect();
@@ -368,20 +300,12 @@
         for (let i = 0; i < maxLen; i++) {
           const u = userVal[i] || '';
           const c = primaryCorrect[i] || '';
-
-          if (u.toLowerCase() === c.toLowerCase()) {
-            html += `<span style="color:#27ae60; font-weight:bold">${u}</span>`;
-          } else {
-            html += u ? `<span style="background:#fadbd8; color:#c0392b; text-decoration:line-through">${u}</span>` : `<span style="color:#ccc">_</span>`;
-          }
+          if (u.toLowerCase() === c.toLowerCase()) html += `<span style="color:#27ae60; font-weight:bold">${u}</span>`;
+          else html += u ? `<span style="background:#fadbd8; color:#c0392b; text-decoration:line-through">${u}</span>` : `<span style="color:#ccc">_</span>`;
         }
         feedback.innerHTML = html;
       };
-
-      window.removeCharFeedback = (inputId) => {
-        const el = document.getElementById(`${inputId}-feedback`);
-        if (el) el.remove();
-      };
+      window.removeCharFeedback = (inputId) => { const el = document.getElementById(`${inputId}-feedback`); if (el) el.remove(); };
     }
 
   })();
