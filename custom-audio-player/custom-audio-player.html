@@ -1,207 +1,190 @@
 <!-- 
-  🎵 GUÍA DE USO - AUDIO COLOR WIDGET (V13 HÍBRIDO) 🎵
-  ----------------------------------------------------
-  OPCIÓN A: MODO VISUAL (Sin código)
-    1. Agrupa este widget con tu Audio.
-    2. Añade 4 figuras de color agrupadas en orden (Izq->Der):
-       [Fondo] [Botón] [Barra] [Texto]
+  🎵 GUÍA DE USO - AUDIO WIDGET V16 (TEXT BOX IDS) 🎵
+  -------------------------------------------------------------
+  Este widget personaliza el reproductor de audio usando CAJAS DE TEXTO con color de fondo.
   
-  OPCIÓN B: MODO CÓDIGO (Manual)
-    1. Edita este HTML y añade atributos al div principal:
-       data-audio-bg-color="#000000"
-       data-audio-btn-color="#ff0000"
-       data-audio-prog-color="#00ff00"
-       data-audio-text-color="#ffffff"
-    2. Agrupa el widget con el audio (no necesitas figuras).
+  PASOS:
+  1. Agrupa este widget con tu Audio nativo de Genially.
+  2. Crea CAJAS DE TEXTO (o formas) y ponles el COLOR DE FONDO que quieras usar.
+  3. Dentro de cada caja, escribe el código (ID) de lo que quieras pintar:
+     
+     - "id-fondo"  -> Pinta el FONDO del reproductor.
+     - "id-boton"  -> Pinta el BOTÓN Play/Pause.
+     - "id-texto"  -> Pinta el TEXTO (nombre del audio, tiempos).
+
+     * Nota: La barra de progreso ya no se personaliza.
+
+  4. Agrupa esas cajas con el audio y este widget.
 -->
+
 <div id="custom-audio-player"
   style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
   <span style="font-family:sans-serif; font-size:11px; color:#555; opacity:0.6; user-select:none;">
-    Audio Color Widget V13
+    Audio Widget V16 (No Prog)
   </span>
 </div>
 
 <style>
+  /* Estilos base para transición suave */
   .widget-audio-player-customized * {
     transition: all 0.3s ease;
   }
 </style>
 
 <script>
-  /* --------------------------------------------------------------
-     PLUGIN CUSTOM AUDIO PLAYER V13.0 - HYBRID MODE
-     -------------------------------------------------------------- */
   (function () {
+    // 1. LIMPIEZA: Ocultar en visualización
     if (window.location.pathname.split('/')[1] !== 'editor') {
       document.querySelectorAll('[id^="custom-audio-player"]').forEach(w => w.style.display = 'none');
     }
 
-    const log = (msg) => console.log(`[AUDIO V13] ${msg}`);
+    const log = (msg) => console.log(`[AUDIO V16] ${msg}`);
 
+    // =========================================================================
+    //  SECCIÓN A: DETECCIÓN (Colores y Roles)
+    // =========================================================================
+
+    /**
+     * EXTRACT COLOR:
+     * Recupera el color de fondo o relleno del elemento.
+     * Prioriza 'background-color' ya que el usuario usa cajas de texto/formas.
+     */
     const extractColor = (el) => {
       if (!el) return null;
       const tag = el.tagName.toUpperCase();
-      if (tag === 'SVG') return null; // Ignorar contenedores SVG
+      if (tag === 'SVG') return null;
 
       const style = window.getComputedStyle(el);
       const ignore = ['rgba(0, 0, 0, 0)', 'transparent', 'none', 'currentColor', 'inherit'];
 
-      // 1. Fill
-      if (['PATH', 'RECT', 'CIRCLE', 'ELLIPSE', 'POLYGON'].includes(tag)) {
-        const fill = el.getAttribute('fill') || style.fill;
-        if (fill && !ignore.includes(fill)) return fill;
-      }
-      // 2. Background
+      // 1. Color de Fondo (Lo más común para Cajas de Texto)
       const bg = style.backgroundColor;
       if (bg && !ignore.includes(bg)) {
         if (tag === 'DIV' && !el.className && bg === 'rgb(0, 0, 0)') return null;
         return bg;
       }
+
+      // 2. Relleno Vectorial (Fallback por si usan formas SVG)
+      if (['PATH', 'RECT', 'CIRCLE', 'ELLIPSE', 'POLYGON'].includes(tag)) {
+        const fill = el.getAttribute('fill') || style.fill;
+        if (fill && !ignore.includes(fill)) return fill;
+      }
+
       return null;
     };
 
-    const applyStyles = (player, colors) => {
+    /**
+     * EXTRACT ROLE:
+     * Busca los IDs "id-fondo", "id-boton", "id-texto" dentro del contenido.
+     * Lee: Texto escrito (textContent), Alt Text, Title o Aria Label.
+     */
+    const extractRole = (el) => {
+      if (!el) return null;
+      const candidates = [
+        el.textContent,                 // Lo más directo: Texto escrito dentro
+        el.getAttribute('aria-label'),
+        el.getAttribute('title'),
+        el.getAttribute('alt')
+      ];
+      const text = candidates.filter(c => c).join(' ').toLowerCase();
+
+      if (text.includes('id-fondo') || text.includes('id_fondo')) return 'bg';
+      if (text.includes('id-boton') || text.includes('id_botone')) return 'btn';
+      if (text.includes('id-texto') || text.includes('id_texto')) return 'text';
+
+      // Ya no buscamos 'id-prog'
+      return null;
+    };
+
+    // =========================================================================
+    //  SECCIÓN B: APLICACIÓN DE ESTILOS
+    // =========================================================================
+
+    const applyConfig = (player, configMap) => {
       if (!player) return;
       player.classList.add('widget-audio-player-customized');
-      player.setAttribute('data-custom-initialized', 'true');
 
-      // Helper para obtener color seguro (si falta uno, usa el último disponible)
-      const getC = (i) => colors[i] || colors[colors.length - 1];
+      const c_BG = configMap.bg;
+      const c_BTN = configMap.btn;
+      const c_TEXT = configMap.text;
 
-      // 1. Fondo
-      if (colors[0]) {
-        player.style.setProperty('background-color', colors[0], 'important');
-        player.style.setProperty('background', colors[0], 'important');
+      // 1. APLICAR FONDO
+      if (c_BG) {
+        player.style.setProperty('background-color', c_BG, 'important');
+        player.style.setProperty('background', c_BG, 'important');
       }
-      // 2. Botones
-      if (colors[1]) {
-        const cBtn = getC(1);
-        const cTxt = colors[3] || '#fff'; // Texto dentro del botón (usa el color de texto general si hay, o blanco)
+
+      // 2. APLICAR TEXTO (Títulos)
+      const textColor = c_TEXT || '#ffffff'; // Blanco por defecto si no se especifica
+      if (c_TEXT) {
+        player.style.setProperty('color', c_TEXT, 'important');
+        player.querySelectorAll('*:not(button *)').forEach(el => el.style.setProperty('color', c_TEXT, 'important'));
+        player.querySelectorAll('svg:not(button svg)').forEach(s => s.style.setProperty('fill', c_TEXT, 'important'));
+      }
+
+      // 3. APLICAR BOTONES (Play/Pause)
+      if (c_BTN) {
         player.querySelectorAll('button, .audio-button, div[role="button"]').forEach(b => {
-          b.style.setProperty('background-color', cBtn, 'important');
-          b.style.setProperty('color', cTxt, 'important');
-          b.querySelectorAll('svg, path').forEach(i => i.style.setProperty('fill', cTxt, 'important'));
+          b.style.setProperty('background-color', c_BTN, 'important');
+          b.style.setProperty('color', textColor, 'important'); // El icono toma el color del texto
+          b.querySelectorAll('svg, path').forEach(i => i.style.setProperty('fill', textColor, 'important'));
         });
-      }
-      // 3. Barra
-      if (colors[2]) {
-        const cProg = getC(2);
-        player.querySelectorAll('input[type="range"], progress').forEach(b => {
-          b.style.setProperty('accent-color', cProg, 'important');
-          b.style.setProperty('color', cProg, 'important');
-        });
-        const uid = 's-' + Math.random().toString(36).slice(2);
-        player.setAttribute('data-sid', uid);
-        const st = document.createElement('style');
-        st.innerHTML = `
-          [data-sid="${uid}"] input[type="range"]::-webkit-slider-thumb { background: ${cProg} !important; }
-          [data-sid="${uid}"] .audio-progress-fill { background-color: ${cProg} !important; }
-        `;
-        document.head.appendChild(st);
-      }
-      // 4. Texto
-      if (colors[3]) {
-        const cTx = getC(3);
-        player.style.setProperty('color', cTx, 'important');
-        player.querySelectorAll('*:not(button *)').forEach(el => el.style.setProperty('color', cTx, 'important'));
-        player.querySelectorAll('svg:not(button svg)').forEach(s => s.style.setProperty('fill', cTx, 'important'));
       }
     };
 
+    // =========================================================================
+    //  SECCIÓN C: BUCLE PRINCIPAL
+    // =========================================================================
+
     const init = () => {
-      const configs = document.querySelectorAll('[id^="custom-audio-player"]');
+      const widgets = document.querySelectorAll('[id^="custom-audio-player"]');
 
-      configs.forEach(config => {
-        // --- MODO MANUAL (Data Attributes) ---
-        const manualBg = config.getAttribute('data-audio-bg-color');
-        const manualBtn = config.getAttribute('data-audio-btn-color');
-        const manualProg = config.getAttribute('data-audio-prog-color');
-        const manualText = config.getAttribute('data-audio-text-color');
-
-        // Buscar grupo y audio...
-        let wrapper = config;
+      widgets.forEach(widget => {
+        // A. Buscar Grupo Padre
+        let wrapper = widget;
         while (wrapper.parentElement && wrapper.parentElement.tagName !== 'BODY' && !wrapper.parentElement.classList.contains('genially-view-item')) {
           wrapper = wrapper.parentElement;
         }
 
-        let parent = config.parentNode;
+        let parent = widget.parentNode;
         let group = null;
         let audio = null;
 
-        for (let i = 0; i < 20; i++) {
+        // B. Buscar Audio Vecino
+        for (let i = 0; i < 15; i++) {
           if (!parent || parent.tagName === 'BODY') break;
-          const foundAudio = parent.querySelector('.widget-audio-player');
-          if (foundAudio) {
-            audio = foundAudio;
-            group = parent;
-            break;
-          }
+          const found = parent.querySelector('.widget-audio-player');
+          if (found) { audio = found; group = parent; break; }
           parent = parent.parentNode;
         }
 
+        // C. Escanear
         if (group && audio) {
-          // 1. CHEQUEO PRIORITARIO: ¿Hay colores manuales?
-          if (manualBg || manualBtn || manualProg || manualText) {
-            log('Detectada configuración manual por atributos.');
-            const manualPalette = [
-              manualBg,
-              manualBtn,
-              manualProg,
-              manualText
-            ].filter(c => c); // Filtrar nulos
-
-            // Reconstruir array completo rellenando huecos si es necesario
-            // (Simplemente pasamos el array disperso, applyStyles se encarga del fallback)
-            const finalManual = [];
-            if (manualBg) finalManual[0] = manualBg;
-            if (manualBtn) finalManual[1] = manualBtn;
-            if (manualProg) finalManual[2] = manualProg;
-            if (manualText) finalManual[3] = manualText;
-
-            applyStyles(audio, finalManual);
-            return; // ¡TERMINAMOS AQUÍ PARA ESTE WIDGET! No escaneamos visualmente.
-          }
-
-          // 2. MODO VISUAL (Si no hubo manual)
           const allNodes = Array.from(group.querySelectorAll('*'));
-          let visualObjects = [];
+          const foundConfig = { bg: null, btn: null, text: null }; // Sin prog
+          let foundAny = false;
 
           allNodes.forEach(node => {
             if (audio.contains(node)) return;
-            if (config.contains(node) || node === config) return;
-            if (wrapper.contains(node) || node === wrapper) return;
-            if (['SCRIPT', 'STYLE', 'LINK', 'META', 'HEAD'].includes(node.tagName)) return;
+            if (widget.contains(node) || node === widget) return;
+            if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
 
-            const color = extractColor(node);
-            if (color) {
-              const rect = node.getBoundingClientRect();
-              if (rect.width > 2 && rect.height > 2) {
-                // log(`Visual: ${color} en ${node.tagName}`);
-                visualObjects.push({ color: color, x: rect.left });
+            const role = extractRole(node); // Busca id-fondo, id-boton...
+            if (role) {
+              const color = extractColor(node); // Busca background-color
+              if (color) {
+                foundConfig[role] = color;
+                foundAny = true;
               }
             }
           });
 
-          // Ordenar visualmente
-          visualObjects.sort((a, b) => a.x - b.x);
-
-          // Filtrar paleta
-          let palette = [];
-          visualObjects.forEach(obj => {
-            if (palette.length === 0 || palette[palette.length - 1] !== obj.color) {
-              palette.push(obj.color);
-            }
-          });
-          palette = [...new Set(palette)];
-
-          if (palette.length > 0) {
-            applyStyles(audio, palette);
-          }
+          if (foundAny) applyConfig(audio, foundConfig);
         }
       });
     };
 
     setTimeout(init, 500);
-    setInterval(init, 3000);
+    setInterval(init, 2000);
   })();
 </script>
