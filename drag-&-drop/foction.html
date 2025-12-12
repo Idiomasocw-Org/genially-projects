@@ -6,11 +6,11 @@
     const totalmax = [];
     function verif() {
         if (!document.getElementById('BTNDND')) {
-            //on recheche le nombre de séries d'objets
+            //buscamos el número de series de objetos
             var serie = document.querySelectorAll("div[data-ref=objet]");
             const tableau = [];
             for (var y = 0; y < serie.length; y++) { tableau.push(serie[y].getAttribute("data-num")); }
-            var max = (Math.max(...tableau)) + 1; //max correspond au nombre de série d'objets (objet1 objet2 ....)
+            var max = (Math.max(...tableau)) + 1; //max corresponde al número de series de objetos (objeto1 objeto2 ....)
 
             var v_globoffon = document.querySelectorAll('.GLOBALOFFON');
             var v_globonoff = document.querySelectorAll('.GLOBALONOFF');
@@ -18,7 +18,7 @@
             var v_globoff = document.querySelectorAll('.GLOBALOFF');
 
 
-            // pour chaque série, on teste la position des objets / cibles
+            // para cada serie, probamos la posición de los objetos / objetivos
             for (var x = 1; x < max; x++) {
 
                 var v_on = document.querySelectorAll('.ON' + x);
@@ -34,7 +34,7 @@
                 totalmax[x] = 0;
                 var total1 = 0;
 
-                //Pour chacune des cibles on reprère la position et surface et la position du centre de chacun des éléments
+                //Para uno de los objetivos identificamos la posición y superficie y la posición del centro de cada uno de los elementos
 
                 for (var i = 0; i < v_cib.length; i++) {
                     total1 = 0;
@@ -50,7 +50,7 @@
                     var largc = eval(cible.style.width.replace('px', ''));
                     var hautc = eval(cible.style.height.replace('px', ''));
 
-                    //Position du centre des objets (pour chaque cible)
+                    //Posición del centro de los objetos (para cada objetivo)
 
                     for (var j = 0; j < v_obj.length; j++) {
                         var objet = v_obj[j].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
@@ -64,7 +64,7 @@
                         var largo = eval(objet.style.width.replace('px', '')) / 2;
                         var hauto = eval(objet.style.height.replace('px', '')) / 2;
 
-                        //Test des positions test pour chaque objet , total1 pour chaque cible , total pour chaque ensemble 1,2 etc		
+                        //Prueba de posiciones para cada objeto , total1 para cada objetivo , total para cada conjunto 1,2 etc		
                         if ((objetpx + largo >= ciblepx) && (objetpx + largo <= ciblepx + largc) && (objetpy + hauto >= ciblepy) && (objetpy + hauto <= ciblepy + hautc)) {
                             test = 1;
                         }
@@ -80,7 +80,7 @@
                     console.log(x + " " + totalmax[x]);
                 }
 
-                // extinction ou apparition alternatives des ONFF et des OFFON
+                // extinción o aparición alternativa de ONFF y OFFON
                 for (var a = 0; a < v_onoff.length; a++) {
                     var boite = v_onoff[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
                     if (boite.getAttribute('id') == null) {
@@ -110,7 +110,7 @@
                     }
 
                 }
-                //apparition OU disparition (1 fois) des ON et OFF
+                //aparición O desaparición (1 vez) de ON y OFF
                 for (var a = 0; a < v_on.length; a++) {
                     var boite = v_on[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
                     if (boite.getAttribute('id') == null) {
@@ -145,7 +145,7 @@
                 if (totalmax[z] != 1) { global = 0 }
             }
 
-            // affichage des feedbacks globaux************************
+            // visualización de retroalimentación global************************
             for (var i = 0; i < v_globoffon.length; i++) {
                 var affichage = v_globoffon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
                 if (affichage.getAttribute("id") == null) {
@@ -198,7 +198,7 @@
             }//*********************
 
         }
-    }	//FIN FONCTION
+    }	//FIN FUNCION
 
     if (document.querySelector('.container-wrapper-genially')) {
         for (var i = 0; i < a_cacher.length; i++) {
