@@ -1,0 +1,375 @@
+<div class="card-iframe"><div id="BTNDND" style="border: silver solid 1px;background: linear-gradient(to bottom right, silver, grey); border-radius: 10px; display:flex; flex-direction: column;  justify-content: center; width:100%; height:100%;" onclick="
+	var a_cacher= document.querySelectorAll('div[data-auteur=scape]');
+	var a_masquer= document.querySelectorAll('div[data-ref=on]');
+	const totalmax=[];
+	function verif()
+	{
+		//on recheche le nombre de séries d'objets
+		var serie=document.querySelectorAll('div[data-ref=objet]');
+		const tableau=[];
+		const replacer=[];
+		const placer=[];
+		const tout=[];
+		for (var y = 0; y&lt; serie.length; y++){tableau.push(serie[y].getAttribute('data-num'));}
+		var max=(Math.max(...tableau))+1; //max correspond au nombre de série d'objets (objet1 objet2 ....)
+
+			var v_globoffon = document.querySelectorAll('.GLOBALOFFON');
+			var v_globonoff = document.querySelectorAll('.GLOBALONOFF');
+			var v_globon = document.querySelectorAll('.GLOBALON');
+			var v_globoff = document.querySelectorAll('.GLOBALOFF');
+			var v_wrongon = document.querySelectorAll('.WRONGON');
+			var v_wrongtemp = document.querySelectorAll('.WRONGTEMP');
+
+
+		// pour chaque série, on teste la position des objets / cibles
+		for (var x=1; x&lt;max;x++)
+		{
+					
+			var v_on = document.querySelectorAll('.ON'+x);
+			var v_off = document.querySelectorAll('.OFF'+x);
+			var v_offon = document.querySelectorAll('.OFFON'+x);
+			var v_onoff = document.querySelectorAll('.ONOFF'+x);
+			var v_obj = document.querySelectorAll('.objet'+x);
+			var v_cib = document.querySelectorAll('.cible'+x);
+			
+			var total=0;		
+			var test=0;
+			
+			totalmax[x]=0;
+			var total1=0;
+			
+			//Pour chacune des cibles on reprère la position et surface et la position du centre de chacun des éléments
+		
+			for (var i = 0; i &lt; v_cib.length; i++)
+			{
+				total1=0;
+				var cible=v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				if (cible.getAttribute('id')==null)
+				{
+					cible=v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				}
+				
+				tout.push(cible);
+			
+				var ciblepx =eval((cible.style.left).replace('px',''));
+				var ciblepy =eval((cible.style.top).replace('px',''));
+			
+				var largc = eval(cible.style.width.replace('px',''));
+				var hautc = eval(cible.style.height.replace('px',''));
+			
+				//Position du centre des objets (pour chaque cible)
+			
+				for (var j = 0; j &lt; v_obj.length; j++)
+				{
+					var objet=v_obj[j].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+					if (objet.getAttribute('id')==null)
+					{
+						objet=v_obj[j].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+					}
+					tout.push(objet);
+					
+					var objetpx =eval((objet.style.left).replace('px',''));
+					var objetpy =eval((objet.style.top).replace('px',''));
+					
+					var largo = eval(objet.style.width.replace('px',''))/2;
+					var hauto = eval(objet.style.height.replace('px',''))/2;
+					
+		//Test des positions test pour chaque objet , total1 pour chaque cible , total pour chaque ensemble 1,2 etc		
+					if ((objetpx+largo &gt;= ciblepx) &amp;&amp; (objetpx+largo &lt;= ciblepx+largc) &amp;&amp; (objetpy+hauto &gt;= ciblepy) &amp;&amp; (objetpy+hauto &lt;= ciblepy+hautc))
+					{
+						test=1;
+						placer.push(objet,cible);
+					} 
+					else
+					{
+						test=0;
+					
+					}
+					total1=total1+test;
+					
+					//console.log('i'+' '+i);
+					//console.log('j'+' '+j);
+					//console.log('test'+' '+test);
+											
+				}
+				if (total1&gt;1) {total1=1};
+				total=total+total1;	
+				if (total==v_cib.length) {totalmax[x]=1} else {totalmax[x]=0}
+			}
+			
+			
+			
+		// extinction ou apparition alternatives des ONFF et des OFFON
+			for (var a = 0; a &lt; v_onoff.length; a++)
+				{
+					var boite=v_onoff[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+					if (boite.getAttribute('id')==null)
+					{
+						boite=v_onoff[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+					}
+					if (boite.getAttribute('id').search('genially-animated') ==0)
+					{
+						if (total==v_cib.length)
+						{	
+							boite.style.display='block';
+						}
+						else 
+						{
+							boite.style.display='none';
+						}
+					}
+				}
+			for (var a = 0; a &lt; v_offon.length; a++)
+				{
+					var boite=v_offon[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+					if (boite.getAttribute('id')==null)
+					{
+						boite=v_offon[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+					}
+					if (boite.getAttribute('id').search('genially-animated') ==0)
+					{
+						if (total==v_cib.length)
+						{	
+							boite.style.display='none';
+						}
+						else 
+						{
+						boite.style.display='block';
+						}
+					}
+
+				}
+				//apparition OU disparition (1 fois) des ON et OFF
+					for (var a = 0; a &lt; v_on.length; a++)
+					{
+						var boite=v_on[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (boite.getAttribute('id')==null)
+						{
+							boite=v_on[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (boite.getAttribute('id').search('genially-animated') ==0)
+						{
+							if (total==v_cib.length)
+							{	
+								boite.style.display='block';
+							}
+							
+						}
+					}	
+					for (var a = 0; a &lt; v_off.length; a++)
+					{
+						var boite=v_off[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (boite.getAttribute('id')==null)
+						{
+							boite=v_off[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (boite.getAttribute('id').search('genially-animated') ==0)
+						{
+							if (total==v_cib.length)
+							{	
+								boite.style.display='none';
+							}
+						}
+					}
+				
+				
+						
+		} //serie Max
+		
+		
+		var global=1;
+		for (var z=1;z&lt;max;z++)
+		{
+		if (totalmax[z] !=1) {global=0}
+		console.log('totalmax'+z+':'+totalmax[z]);
+		console.log('global='+global);
+		}
+		
+		
+		//replacer les erreurs
+		if (!document.getElementById('correction'))
+		{
+		}
+		else
+		{
+		for (var t = 0; t &lt; tout.length; t++)
+		{
+		if (!placer.includes(tout[t]))
+		{
+		tout[t].style.left=tout[t].getAttribute('init-x');
+		tout[t].style.top=tout[t].getAttribute('init-y');
+		tout[t].setAttribute('data-x',0);
+		tout[t].setAttribute('data-y',0);
+		tout[t].setAttribute('waterloo-x',0);
+		tout[t].setAttribute('waterloo-y',0);
+		}
+		}
+		}
+	
+
+		// affichage des feedbacks globaux************************
+					for (var i = 0; i &lt; v_wrongtemp.length; i++)
+					{
+						var affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (affichage.getAttribute('id')==null)
+						{
+							affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (affichage.getAttribute('id').search('genially-animated') ==0)
+						{
+							if (global!=1)
+							{
+								affichage.style.display='block';
+							}
+							else
+							{
+								affichage.style.display='none';
+							}
+						}
+			
+					}
+					
+					for (var i = 0; i &lt; v_wrongon.length; i++)
+					{
+						var affichage=v_wrongon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (affichage.getAttribute('id')==null)
+						{
+							affichage=v_wrongon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (affichage.getAttribute('id').search('genially-animated') ==0)
+						{
+							if (global!=1)
+							{
+								affichage.style.display='block';
+							}
+							else
+							{
+								affichage.style.display='none';
+							}
+						}
+					}
+					
+					for (var i = 0; i &lt; v_globoffon.length; i++)
+					{
+						var affichage=v_globoffon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (affichage.getAttribute('id')==null)
+						{
+							affichage=v_globoffon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (affichage.getAttribute('id').search('genially-animated') ==0)
+						{
+							if (global==1)
+							{
+								affichage.style.display='none';
+							}
+							else
+							{
+								affichage.style.display='block';
+							}
+						}
+					}
+					for (var i = 0; i &lt; v_globonoff.length; i++)
+					{
+						var affichage=v_globonoff[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (affichage.getAttribute('id')==null)
+						{
+							affichage=v_globonoff[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (affichage.getAttribute('id').search('genially-animated') ==0)
+						{
+							if (global==1)
+							{
+								affichage.style.display='block';
+							}
+							else
+							{
+								affichage.style.display='none';
+							}
+						}
+					}
+					for (var i = 0; i &lt; v_globon.length; i++)
+					{
+						var affichage=v_globon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (affichage.getAttribute('id')==null)
+							{
+							affichage=v_globon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+							}
+							if (affichage.getAttribute('id').search('genially-animated') ==0)
+							{
+								if (global==1)
+									{
+										affichage.style.display='block';
+									}
+							}
+					}
+					for (var i = 0; i &lt; v_globoff.length; i++)
+					{
+						var affichage=v_globoff[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (affichage.getAttribute('id')==null)
+						{
+							affichage=v_globoff[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (affichage.getAttribute('id').search('genially-animated') ==0)
+						{
+							if (global==1)
+							{
+								affichage.style.display='none';
+							}
+						}
+					}//*********************
+		
+	}	//FIN FONCTION
+
+verif();
+setTimeout(function(){ var v_wrongtemp = document.querySelectorAll('.WRONGTEMP');for (var i = 0; i &lt; v_wrongtemp.length; i++)
+					{
+						var affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						if (affichage.getAttribute('id')==null)
+						{
+							affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+						}
+						if (affichage.getAttribute('id').search('genially-animated') ==0)
+						{
+								affichage.style.display='none';
+					
+						}
+			
+					} }, 1000);
+
+
+"> <p style="  color: #fff; text-align:center; font-size: 20px; font-weight:bold;"> VERIFICATION </p></div>
+<script>
+if (document.querySelector('.container-wrapper-genially'))
+{
+const tableau=[];
+var serie=document.querySelectorAll('div[data-ref=objet]');
+for (var y = 0; y< serie.length; y++){tableau.push(serie[y].getAttribute('data-num'));}
+var max=(Math.max(...tableau))+1; //max correspond au nombre de série d'objets (objet1 objet2 ....)
+for (var x=1; x<max;x++)
+		{
+
+var v_obj = document.querySelectorAll('.objet'+x);
+var v_cib = document.querySelectorAll('.cible'+x);
+for (var i = 0; i < v_cib.length; i++)
+			{
+				
+				var cible=v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				if (cible.getAttribute('id')==null)
+				{
+					cible=v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				}
+				cible.setAttribute('init-x',cible.style.left);cible.setAttribute('init-y',cible.style.top);
+				}
+for (var i = 0; i < v_obj.length; i++)
+			{
+				
+				var objet=v_obj[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				if (objet.getAttribute('id')==null)
+				{
+					objet=v_obj[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				}
+				objet.setAttribute('init-x',objet.style.left);objet.setAttribute('init-y',objet.style.top);
+			}
+			}
+	}			
+</script></div>
