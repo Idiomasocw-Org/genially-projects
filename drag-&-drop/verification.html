@@ -1,4 +1,5 @@
-<div class="card-iframe"><div id="BTNDND" style="border: silver solid 1px;background: linear-gradient(to bottom right, silver, grey); border-radius: 10px; display:flex; flex-direction: column;  justify-content: center; width:100%; height:100%;" onclick="
+<div id="BTNDND"
+style="border: silver solid 1px;background: linear-gradient(to bottom right, silver, grey); border-radius: 10px; display:flex; flex-direction: column;  justify-content: center; width:100%; height:100%;"onclick="
 	var a_cacher= document.querySelectorAll('div[data-auteur=scape]');
 	var a_masquer= document.querySelectorAll('div[data-ref=on]');
 	const totalmax=[];
@@ -10,7 +11,7 @@
 		const replacer=[];
 		const placer=[];
 		const tout=[];
-		for (var y = 0; y&lt; serie.length; y++){tableau.push(serie[y].getAttribute('data-num'));}
+		for (var y = 0; serie.length > y; y++){tableau.push(serie[y].getAttribute('data-num'));}
 		var max=(Math.max(...tableau))+1; //max correspond au nombre de série d'objets (objet1 objet2 ....)
 
 			var v_globoffon = document.querySelectorAll('.GLOBALOFFON');
@@ -22,7 +23,7 @@
 
 
 		// pour chaque série, on teste la position des objets / cibles
-		for (var x=1; x&lt;max;x++)
+		for (var x=1; max > x;x++)
 		{
 					
 			var v_on = document.querySelectorAll('.ON'+x);
@@ -40,7 +41,7 @@
 			
 			//Pour chacune des cibles on reprère la position et surface et la position du centre de chacun des éléments
 		
-			for (var i = 0; i &lt; v_cib.length; i++)
+			for (var i = 0; v_cib.length > i; i++)
 			{
 				total1=0;
 				var cible=v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
@@ -59,7 +60,7 @@
 			
 				//Position du centre des objets (pour chaque cible)
 			
-				for (var j = 0; j &lt; v_obj.length; j++)
+				for (var j = 0; v_obj.length > j; j++)
 				{
 					var objet=v_obj[j].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 					if (objet.getAttribute('id')==null)
@@ -75,7 +76,7 @@
 					var hauto = eval(objet.style.height.replace('px',''))/2;
 					
 		//Test des positions test pour chaque objet , total1 pour chaque cible , total pour chaque ensemble 1,2 etc		
-					if ((objetpx+largo &gt;= ciblepx) &amp;&amp; (objetpx+largo &lt;= ciblepx+largc) &amp;&amp; (objetpy+hauto &gt;= ciblepy) &amp;&amp; (objetpy+hauto &lt;= ciblepy+hautc))
+					if ((objetpx+largo >= ciblepx) && (ciblepx+largc >= objetpx+largo) && (objetpy+hauto >= ciblepy) && (ciblepy+hautc >= objetpy+hauto))
 					{
 						test=1;
 						placer.push(objet,cible);
@@ -92,7 +93,7 @@
 					//console.log('test'+' '+test);
 											
 				}
-				if (total1&gt;1) {total1=1};
+				if (total1>1) {total1=1};
 				total=total+total1;	
 				if (total==v_cib.length) {totalmax[x]=1} else {totalmax[x]=0}
 			}
@@ -100,7 +101,7 @@
 			
 			
 		// extinction ou apparition alternatives des ONFF et des OFFON
-			for (var a = 0; a &lt; v_onoff.length; a++)
+			for (var a = 0; v_onoff.length > a; a++)
 				{
 					var boite=v_onoff[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 					if (boite.getAttribute('id')==null)
@@ -119,7 +120,7 @@
 						}
 					}
 				}
-			for (var a = 0; a &lt; v_offon.length; a++)
+			for (var a = 0; v_offon.length > a; a++)
 				{
 					var boite=v_offon[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 					if (boite.getAttribute('id')==null)
@@ -140,7 +141,7 @@
 
 				}
 				//apparition OU disparition (1 fois) des ON et OFF
-					for (var a = 0; a &lt; v_on.length; a++)
+					for (var a = 0; v_on.length > a; a++)
 					{
 						var boite=v_on[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (boite.getAttribute('id')==null)
@@ -156,7 +157,7 @@
 							
 						}
 					}	
-					for (var a = 0; a &lt; v_off.length; a++)
+					for (var a = 0; v_off.length > a; a++)
 					{
 						var boite=v_off[a].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (boite.getAttribute('id')==null)
@@ -178,7 +179,7 @@
 		
 		
 		var global=1;
-		for (var z=1;z&lt;max;z++)
+		for (var z=1;max > z;z++)
 		{
 		if (totalmax[z] !=1) {global=0}
 		console.log('totalmax'+z+':'+totalmax[z]);
@@ -192,7 +193,7 @@
 		}
 		else
 		{
-		for (var t = 0; t &lt; tout.length; t++)
+		for (var t = 0; tout.length > t; t++)
 		{
 		if (!placer.includes(tout[t]))
 		{
@@ -208,7 +209,7 @@
 	
 
 		// affichage des feedbacks globaux************************
-					for (var i = 0; i &lt; v_wrongtemp.length; i++)
+					for (var i = 0; v_wrongtemp.length > i; i++)
 					{
 						var affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (affichage.getAttribute('id')==null)
@@ -229,7 +230,7 @@
 			
 					}
 					
-					for (var i = 0; i &lt; v_wrongon.length; i++)
+					for (var i = 0; v_wrongon.length > i; i++)
 					{
 						var affichage=v_wrongon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (affichage.getAttribute('id')==null)
@@ -249,7 +250,7 @@
 						}
 					}
 					
-					for (var i = 0; i &lt; v_globoffon.length; i++)
+					for (var i = 0; v_globoffon.length > i; i++)
 					{
 						var affichage=v_globoffon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (affichage.getAttribute('id')==null)
@@ -268,7 +269,7 @@
 							}
 						}
 					}
-					for (var i = 0; i &lt; v_globonoff.length; i++)
+					for (var i = 0; v_globonoff.length > i; i++)
 					{
 						var affichage=v_globonoff[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (affichage.getAttribute('id')==null)
@@ -287,7 +288,7 @@
 							}
 						}
 					}
-					for (var i = 0; i &lt; v_globon.length; i++)
+					for (var i = 0; v_globon.length > i; i++)
 					{
 						var affichage=v_globon[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (affichage.getAttribute('id')==null)
@@ -302,7 +303,7 @@
 									}
 							}
 					}
-					for (var i = 0; i &lt; v_globoff.length; i++)
+					for (var i = 0; v_globoff.length > i; i++)
 					{
 						var affichage=v_globoff[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 						if (affichage.getAttribute('id')==null)
@@ -320,56 +321,52 @@
 		
 	}	//FIN FONCTION
 
-verif();
-setTimeout(function(){ var v_wrongtemp = document.querySelectorAll('.WRONGTEMP');for (var i = 0; i &lt; v_wrongtemp.length; i++)
-					{
-						var affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-						if (affichage.getAttribute('id')==null)
+	verif();
+	setTimeout(function(){ var v_wrongtemp = document.querySelectorAll('.WRONGTEMP');for (var i = 0; v_wrongtemp.length > i; i++)
 						{
-							affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-						}
-						if (affichage.getAttribute('id').search('genially-animated') ==0)
-						{
-								affichage.style.display='none';
-					
-						}
-			
-					} }, 1000);
+							var affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+							if (affichage.getAttribute('id')==null)
+							{
+								affichage=v_wrongtemp[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+							}
+							if (affichage.getAttribute('id').search('genially-animated') ==0)
+							{
+									affichage.style.display='none';
+						
+							}
+				
+						} }, 1000);
 
 
-"> <p style="  color: #fff; text-align:center; font-size: 20px; font-weight:bold;"> VERIFICATION </p></div>
+">
+	<p style="  color: #fff; text-align:center; font-size: 20px; font-weight:bold;"> VERIFICATION </p>
+</div>
 <script>
-if (document.querySelector('.container-wrapper-genially'))
-{
-const tableau=[];
-var serie=document.querySelectorAll('div[data-ref=objet]');
-for (var y = 0; y< serie.length; y++){tableau.push(serie[y].getAttribute('data-num'));}
-var max=(Math.max(...tableau))+1; //max correspond au nombre de série d'objets (objet1 objet2 ....)
-for (var x=1; x<max;x++)
-		{
+	if (document.querySelector('.container-wrapper-genially')) {
+		const tableau = [];
+		var serie = document.querySelectorAll('div[data-ref=objet]');
+		for (var y = 0; y < serie.length; y++) { tableau.push(serie[y].getAttribute('data-num')); }
+		var max = (Math.max(...tableau)) + 1; //max correspond au nombre de série d'objets (objet1 objet2 ....)
+		for (var x = 1; x < max; x++) {
 
-var v_obj = document.querySelectorAll('.objet'+x);
-var v_cib = document.querySelectorAll('.cible'+x);
-for (var i = 0; i < v_cib.length; i++)
-			{
-				
-				var cible=v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-				if (cible.getAttribute('id')==null)
-				{
-					cible=v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+			var v_obj = document.querySelectorAll('.objet' + x);
+			var v_cib = document.querySelectorAll('.cible' + x);
+			for (var i = 0; i < v_cib.length; i++) {
+
+				var cible = v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				if (cible.getAttribute('id') == null) {
+					cible = v_cib[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
 				}
-				cible.setAttribute('init-x',cible.style.left);cible.setAttribute('init-y',cible.style.top);
-				}
-for (var i = 0; i < v_obj.length; i++)
-			{
-				
-				var objet=v_obj[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-				if (objet.getAttribute('id')==null)
-				{
-					objet=v_obj[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-				}
-				objet.setAttribute('init-x',objet.style.left);objet.setAttribute('init-y',objet.style.top);
+				cible.setAttribute('init-x', cible.style.left); cible.setAttribute('init-y', cible.style.top);
 			}
+			for (var i = 0; i < v_obj.length; i++) {
+
+				var objet = v_obj[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				if (objet.getAttribute('id') == null) {
+					objet = v_obj[i].parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+				}
+				objet.setAttribute('init-x', objet.style.left); objet.setAttribute('init-y', objet.style.top);
 			}
+		}
 	}			
-</script></div>
+</script>
