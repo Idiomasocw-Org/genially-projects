@@ -1,0 +1,122 @@
+<!-- CLEAR BUTTON V2.5 - SYNTAX FIXED (NO CONFIRMATION) -->
+<style>
+    .gen-clear-btn-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        font-family: Arial, sans-serif;
+    }
+
+    .gen-clear-btn {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .gen-clear-btn:hover {
+        background-color: #c0392b;
+    }
+
+    .gen-clear-btn:disabled {
+        background-color: #bdc3c7;
+        cursor: default;
+    }
+</style>
+
+<div class="gen-clear-btn-wrapper">
+    <button id="gen-clear-btn-id" class="gen-clear-btn">
+        BORRAR
+    </button>
+</div>
+
+<script>
+    (function () {
+        var btn = document.getElementById('gen-clear-btn-id');
+        if (!btn) return;
+
+        // Unique ID to avoid conflicts
+        btn.id = 'gen-clear-btn-' + Math.random().toString(36).substr(2, 9);
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+
+            // 1. CLEAR INPUTS AND STYLES
+            // Strategy: Find ALL question inputs usually used by this plugin
+            var inputs = document.querySelectorAll('input.question, input[id^="q"], input[id*="_resp"]');
+
+            inputs.forEach(function (inp) {
+                // Clear Text
+                inp.value = "";
+                inp.setAttribute("value", "");
+
+                // Clear Styles (Color from id-mal/id-bien)
+                inp.style.color = "";
+                inp.style.backgroundColor = "";
+                inp.classList.remove("correct", "incorrect"); // Just in case
+
+                // Trigger events to update any listeners
+                inp.dispatchEvent(new Event('input', { bubbles: true }));
+                inp.dispatchEvent(new Event('change', { bubbles: true }));
+
+                // Clear Feedback Tooltips (Character feedback)
+                if (window.removeCharFeedback) window.removeCharFeedback(inp.id);
+                var fb = document.getElementById(inp.id + '-feedback');
+                if (fb) fb.remove();
+
+                // Clear Session Storage for this input
+                sessionStorage.removeItem(inp.id);
+                // Also try cleaning legacy IDs just in case
+                var simpleId = inp.id.split('_').pop(); // "resp1" or "q1"
+                if (simpleId) sessionStorage.removeItem(simpleId);
+            });
+
+            // 2. CLEAR GLOBAL ACTIVITY STATES (SessionStorage)
+            // We try to clean keys for all potential activities or current one
+            Object.keys(sessionStorage).forEach(function (key) {
+                if (key.includes('_faux') || key.includes('_resultado') || key.includes('niet') || key.includes('bloc')) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+
+            // 3. HIDE VISUAL FEEDBACK (Monsters, Strings)
+            // Function to hide by class and ID
+            var hide = function (selector) {
+                var els = document.querySelectorAll(selector);
+                els.forEach(function (el) {
+                    el.style.display = 'none';
+                    // Walk up to Genially Item container if possible to hide the whole group
+                    var p = el;
+                    var d = 0;
+                    while (p && !p.classList.contains('genially-view-item') && d < 10) { p = p.parentNode; d++; }
+                    if (p && p.classList.contains('genially-view-item')) p.style.display = 'none';
+                    // Also try the FITG helper if available
+                    if (window.FITG && window.FITG.findParentContainer) {
+                        var fp = window.FITG.findParentContainer(el);
+                        if (fp) fp.style.display = 'none';
+                    }
+                });
+            };
+
+            hide('.boncouise');
+            hide('.erreurcouise');
+            hide('.masquecouise');
+            hide('[id="boncouise"]');
+            hide('[id="erreurcouise"]');
+            hide('[id="masquecouise"]');
+
+            // Force global update if function exists
+            if (window.FITG && window.FITG.resetVisuals) {
+                // Try to guess a few activity IDs or pass null if modified to handle all
+                window.FITG.resetVisuals('act1');
+            }
+        });
+    })();
+</script>

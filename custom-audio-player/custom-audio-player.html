@@ -1,11 +1,190 @@
-<div id="custom-audio-player" style="color:black; background-color:#BAE1F7; text-align:center; font-weight:normal; font-size:16px; width:100%; height:100%;">Custom audio-player</div>
+<!-- 
+  🎵 GUÍA DE USO - AUDIO WIDGET V16 (TEXT BOX IDS) 🎵
+  -------------------------------------------------------------
+  Este widget personaliza el reproductor de audio usando CAJAS DE TEXTO con color de fondo.
+  
+  PASOS:
+  1. Agrupa este widget con tu Audio nativo de Genially.
+  2. Crea CAJAS DE TEXTO (o formas) y ponles el COLOR DE FONDO que quieras usar.
+  3. Dentro de cada caja, escribe el código (ID) de lo que quieras pintar:
+     
+     - "id-fondo"  -> Pinta el FONDO del reproductor.
+     - "id-boton"  -> Pinta el BOTÓN Play/Pause.
+     - "id-texto"  -> Pinta el TEXTO (nombre del audio, tiempos).
+
+     * Nota: La barra de progreso ya no se personaliza.
+
+  4. Agrupa esas cajas con el audio y este widget.
+-->
+
+<div id="custom-audio-player"
+  style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
+  <span style="font-family:sans-serif; font-size:11px; color:#555; opacity:0.6; user-select:none;">
+    Audio Widget V16 (No Prog)
+  </span>
+</div>
+
 <style>
-.widget-audio-player{background-color:#5647ff!important;} //Replace the value between the pound sign and the exclamation mark with the desired background color.
-</style>
-<script>
-  var url = window.location.pathname.split( "/" );
-  var refgenial = url[1];
-  if (refgenial != "editor") {
-    document.getElementById('custom-audio-player').style.display = 'none';
+  /* Estilos base para transición suave */
+  .widget-audio-player-customized * {
+    transition: all 0.3s ease;
   }
+</style>
+
+<script>
+  (function () {
+    // 1. LIMPIEZA: Ocultar en visualización
+    if (window.location.pathname.split('/')[1] !== 'editor') {
+      document.querySelectorAll('[id^="custom-audio-player"]').forEach(w => w.style.display = 'none');
+    }
+
+    const log = (msg) => console.log(`[AUDIO V16] ${msg}`);
+
+    // =========================================================================
+    //  SECCIÓN A: DETECCIÓN (Colores y Roles)
+    // =========================================================================
+
+    /**
+     * EXTRACT COLOR:
+     * Recupera el color de fondo o relleno del elemento.
+     * Prioriza 'background-color' ya que el usuario usa cajas de texto/formas.
+     */
+    const extractColor = (el) => {
+      if (!el) return null;
+      const tag = el.tagName.toUpperCase();
+      if (tag === 'SVG') return null;
+
+      const style = window.getComputedStyle(el);
+      const ignore = ['rgba(0, 0, 0, 0)', 'transparent', 'none', 'currentColor', 'inherit'];
+
+      // 1. Color de Fondo (Lo más común para Cajas de Texto)
+      const bg = style.backgroundColor;
+      if (bg && !ignore.includes(bg)) {
+        if (tag === 'DIV' && !el.className && bg === 'rgb(0, 0, 0)') return null;
+        return bg;
+      }
+
+      // 2. Relleno Vectorial (Fallback por si usan formas SVG)
+      if (['PATH', 'RECT', 'CIRCLE', 'ELLIPSE', 'POLYGON'].includes(tag)) {
+        const fill = el.getAttribute('fill') || style.fill;
+        if (fill && !ignore.includes(fill)) return fill;
+      }
+
+      return null;
+    };
+
+    /**
+     * EXTRACT ROLE:
+     * Busca los IDs "id-fondo", "id-boton", "id-texto" dentro del contenido.
+     * Lee: Texto escrito (textContent), Alt Text, Title o Aria Label.
+     */
+    const extractRole = (el) => {
+      if (!el) return null;
+      const candidates = [
+        el.textContent,                 // Lo más directo: Texto escrito dentro
+        el.getAttribute('aria-label'),
+        el.getAttribute('title'),
+        el.getAttribute('alt')
+      ];
+      const text = candidates.filter(c => c).join(' ').toLowerCase();
+
+      if (text.includes('id-fondo') || text.includes('id_fondo')) return 'bg';
+      if (text.includes('id-boton') || text.includes('id_botone')) return 'btn';
+      if (text.includes('id-texto') || text.includes('id_texto')) return 'text';
+
+      // Ya no buscamos 'id-prog'
+      return null;
+    };
+
+    // =========================================================================
+    //  SECCIÓN B: APLICACIÓN DE ESTILOS
+    // =========================================================================
+
+    const applyConfig = (player, configMap) => {
+      if (!player) return;
+      player.classList.add('widget-audio-player-customized');
+
+      const c_BG = configMap.bg;
+      const c_BTN = configMap.btn;
+      const c_TEXT = configMap.text;
+
+      // 1. APLICAR FONDO
+      if (c_BG) {
+        player.style.setProperty('background-color', c_BG, 'important');
+        player.style.setProperty('background', c_BG, 'important');
+      }
+
+      // 2. APLICAR TEXTO (Títulos)
+      const textColor = c_TEXT || '#ffffff'; // Blanco por defecto si no se especifica
+      if (c_TEXT) {
+        player.style.setProperty('color', c_TEXT, 'important');
+        player.querySelectorAll('*:not(button *)').forEach(el => el.style.setProperty('color', c_TEXT, 'important'));
+        player.querySelectorAll('svg:not(button svg)').forEach(s => s.style.setProperty('fill', c_TEXT, 'important'));
+      }
+
+      // 3. APLICAR BOTONES (Play/Pause)
+      if (c_BTN) {
+        player.querySelectorAll('button, .audio-button, div[role="button"]').forEach(b => {
+          b.style.setProperty('background-color', c_BTN, 'important');
+          b.style.setProperty('color', textColor, 'important'); // El icono toma el color del texto
+          b.querySelectorAll('svg, path').forEach(i => i.style.setProperty('fill', textColor, 'important'));
+        });
+      }
+    };
+
+    // =========================================================================
+    //  SECCIÓN C: BUCLE PRINCIPAL
+    // =========================================================================
+
+    const init = () => {
+      const widgets = document.querySelectorAll('[id^="custom-audio-player"]');
+
+      widgets.forEach(widget => {
+        // A. Buscar Grupo Padre
+        let wrapper = widget;
+        while (wrapper.parentElement && wrapper.parentElement.tagName !== 'BODY' && !wrapper.parentElement.classList.contains('genially-view-item')) {
+          wrapper = wrapper.parentElement;
+        }
+
+        let parent = widget.parentNode;
+        let group = null;
+        let audio = null;
+
+        // B. Buscar Audio Vecino
+        for (let i = 0; i < 15; i++) {
+          if (!parent || parent.tagName === 'BODY') break;
+          const found = parent.querySelector('.widget-audio-player');
+          if (found) { audio = found; group = parent; break; }
+          parent = parent.parentNode;
+        }
+
+        // C. Escanear
+        if (group && audio) {
+          const allNodes = Array.from(group.querySelectorAll('*'));
+          const foundConfig = { bg: null, btn: null, text: null }; // Sin prog
+          let foundAny = false;
+
+          allNodes.forEach(node => {
+            if (audio.contains(node)) return;
+            if (widget.contains(node) || node === widget) return;
+            if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
+
+            const role = extractRole(node); // Busca id-fondo, id-boton...
+            if (role) {
+              const color = extractColor(node); // Busca background-color
+              if (color) {
+                foundConfig[role] = color;
+                foundAny = true;
+              }
+            }
+          });
+
+          if (foundAny) applyConfig(audio, foundConfig);
+        }
+      });
+    };
+
+    setTimeout(init, 500);
+    setInterval(init, 2000);
+  })();
 </script>

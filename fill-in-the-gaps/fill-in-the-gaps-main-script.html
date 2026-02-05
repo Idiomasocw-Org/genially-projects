@@ -1,176 +1,312 @@
-<div
-  id="INITcouise"
-  style="
+<div id="INITcouise" data-activity-id="" data-persist="true" style="
     font-size: 16px;
     text-align: center;
     background-color: black;
     color: white;
-  "
->
-  INITIALISATION-COUISE V2.4<br />(Numérote les champs et vide les champs
-  réponses en VISUALISATION uniquement)
+  ">
+  INITIALISATION-COUISE V2.9 (ANTI-FLASH)<br />
+  (Numera los campos y gestiona respuestas)<br />
+  <small>ID: <span class="activity-id-display"></span> | Persistencia: <span class="persist-status">OFF</span></small>
 </div>
+
 <script>
-  // Hide modal overlay to prevent screen darkening
-  setTimeout(function() {
-    var modalPortal = document.querySelector('.ReactModalPortal');
-    if (modalPortal) {
-      modalPortal.style.display = 'none';
-    }
-  }, 10);
+  /* --------------------------------------------------------------
+     PLUGIN "FILL-IN-THE-GAPS" V2.9 - OPTIMIZACIÓN VISUAL
+     - MutationObserver inmediato para evitar parpadeo de configs
+     -------------------------------------------------------------- */
 
-  // auto-incrémente les champs réponses
-  var champ = document.querySelectorAll(".question");
-  for (var i = 0; i < champ.length; i++) {
-    var ref = "q" + (i + 1);
-    champ[i].setAttribute("value", ref);
-    champ[i].setAttribute("id", ref);
-    champ[i].setAttribute("name", ref);
-  }
+  // ============================================================
+  // CONFIGURACIÓN: Cambia data-persist="true" en el div INITcouise
+  // para activar la persistencia de respuestas
+  // ============================================================
 
-  var url = window.location.pathname.split("/");
-  var refgenial = url[1];
-  // affiche Q1 Q2 etc en edition et prévisualisation
-  if (refgenial != "editor" && refgenial != "Preview") {
-    for (var i = 0; i < champ.length; i++) {
-      champ[i].setAttribute("value", "");
+  (function () {
+    // 0. DETECCIÓN RÁPIDA Y ANTI-FLASH (LO PRIMERO)
+    // Solo si no estamos en editor
+    if (window.location.pathname.split('/')[1] !== 'editor') {
+      const hideConfigNodes = (nodeList) => {
+        nodeList.forEach(node => {
+          if (node.nodeType === 1) { // Elemento
+            // Caso 1: El nodo mismo tiene texto
+            if (node.textContent && node.children.length === 0) {
+              const txt = node.textContent.toLowerCase();
+              if (txt.includes('id-bien') || txt.includes('id-mal') || txt.includes('id-correct') || txt.includes('id-incorrect')) {
+                // Subir a contenedor visible
+                let p = node;
+                let levels = 0;
+                while (p && !p.classList.contains('genially-view-item') && levels < 6) { p = p.parentNode; levels++; }
+                if (p) { p.style.opacity = '0'; setTimeout(() => { p.style.display = 'none'; }, 50); } // Opacidad 0 es más rápido visualmente
+              }
+            }
+            // Caso 2: Buscar dentro del nodo (si es un contenedor grande recien añadido)
+            else {
+              // Micro-optimización: querySelectorAll es costoso en bucles grandes, pero necesario si añadieron un bloque entero
+              const candidates = node.querySelectorAll ? node.querySelectorAll('*') : [];
+              candidates.forEach(c => {
+                if (c.children.length === 0 && c.textContent) {
+                  const t = c.textContent.toLowerCase();
+                  if (t.includes('id-bien') || t.includes('id-mal')) {
+                    let p = c;
+                    let l = 0;
+                    while (p && !p.classList.contains('genially-view-item') && l < 6) { p = p.parentNode; l++; }
+                    if (p) { p.style.display = 'none'; }
+                  }
+                }
+              });
+            }
+          }
+        });
+      };
+
+      // Observador Ojo de Halcón: Vigila el DOM desde YA
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.addedNodes.length) hideConfigNodes(mutation.addedNodes);
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      // Barrido Inicial Inmediato
+      hideConfigNodes(Array.from(document.body.querySelectorAll('*')));
     }
-  }
-  //
-  if (refgenial != "editor") {
-    document.getElementById("INITcouise").style.display = "none";
-    if (document.getElementById("boncouise")) {
-      document.getElementById("boncouise").style.display = "none";
+
+
+    // RESTO DE INICIALIZACIÓN (Standard)
+    const allWidgets = document.querySelectorAll('[id^="INITcouise"]');
+    let initWidget = null;
+    for (let w of allWidgets) { if (!w.getAttribute('data-activity-id')) { initWidget = w; break; } }
+    if (!initWidget) initWidget = document.getElementById('INITcouise');
+
+    // Generar ID único para esta actividad
+    let activityId = initWidget.getAttribute('data-activity-id');
+    if (!activityId || activityId.trim() === '') {
+      const widgetIndex = Array.from(allWidgets).indexOf(initWidget);
+      activityId = `act${widgetIndex + 1}`;
+      initWidget.setAttribute('data-activity-id', activityId);
     }
-    if (document.getElementById("erreurcouise")) {
-      document.getElementById("erreurcouise").style.display = "none";
-    }
-    if (document.getElementById("masquecouise")) {
-      document.getElementById("masquecouise").style.display = "none";
-    }
-    if (document.getElementById("tentativecouise")) {
-      document.getElementById("tentativecouise").style.display = "none";
-    }
-    function getParentElt(nombre) {
-      var pnode = elt[nombre].parentNode.parentNode.parentNode;
-      while (pnode.getAttribute("id") == null) {
-        pnode = pnode.parentNode;
+
+    // Leer configuración de persistencia
+    const persistEnabled = initWidget.getAttribute('data-persist') === 'true';
+
+    // Actualizar display
+    const activityIdDisplay = initWidget.querySelector('.activity-id-display');
+    const persistStatus = initWidget.querySelector('.persist-status');
+    if (activityIdDisplay) activityIdDisplay.textContent = activityId;
+    if (persistStatus) persistStatus.textContent = persistEnabled ? 'ON' : 'OFF';
+
+    window.currentActivityId = activityId;
+
+    console.log(`[FILL-IN-THE-GAPS] Actividad: ${activityId} | Persistencia: ${persistEnabled ? 'ACTIVADA' : 'DESACTIVADA'}`);
+
+    // Helper para claves de storage
+    const createStorageKey = (key) => {
+      const keyMap = {
+        'fois': 'intentos',
+        'bloc': 'bloqueado',
+        'faux': 'resultado',
+        'niet': 'estado'
+      };
+      const readableKey = keyMap[key] || key;
+      return `${activityId}_${readableKey}`;
+    };
+
+    // 1. Ocultar overlay de Genially 
+    setTimeout(() => {
+      const hideGeniallyOverlay = () => {
+        document.querySelectorAll('.ReactModalPortal, .ReactModal__Overlay').forEach(el => {
+          el.style.display = 'none'; el.style.opacity = '0'; el.style.pointerEvents = 'none';
+        });
+      };
+      hideGeniallyOverlay();
+      const observer = new MutationObserver(hideGeniallyOverlay);
+      observer.observe(document.body, { childList: true, subtree: true });
+    }, 15);
+
+    // 2. Auto-incrementar campos de respuesta (ORIGINAL + MEJORADO)
+    const findActivityContainer = () => {
+      let container = initWidget.parentNode;
+      for (let i = 0; i < 6; i++) {
+        if (container.parentNode) container = container.parentNode;
       }
-      pnode = pnode.parentNode.parentNode;
-      return pnode;
-    }
-    var elt = document.querySelectorAll(".boncouise");
-    for (var i = 0; i < elt.length; i++) {
-      elt[i].style.display = "none";
-    }
-    var elt = document.querySelectorAll(".erreurcouise");
-    for (var i = 0; i < elt.length; i++) {
-      elt[i].style.display = "none";
-    }
-    var elt = document.querySelectorAll(".masquecouise");
-    for (var i = 0; i < elt.length; i++) {
-      elt[i].style.display = "none";
-    }
+      return container;
+    };
 
-    function getParent(name) {
-      var pnode =
-        document.getElementById(name).parentNode.parentNode.parentNode;
-      while (pnode.getAttribute("id") == null) {
-        pnode = pnode.parentNode;
+    const activityContainer = findActivityContainer();
+    const questions = activityContainer.querySelectorAll(".question");
+
+    questions.forEach((q, i) => {
+      // IDs: Si tienes múltiples actividades usa act1_resp1, sino compatible con q1
+      const simpleId = `q${i + 1}`;
+      const uniqueId = `${activityId}_resp${i + 1}`;
+
+      // Usar ID único para múltiples actividades, ID simple para una sola
+      const finalId = allWidgets.length > 1 ? uniqueId : simpleId;
+
+      q.setAttribute("value", finalId);
+      q.setAttribute("id", finalId);
+      q.setAttribute("name", finalId);
+      q.setAttribute("data-activity-id", activityId);
+    });
+
+    console.log(`[FILL-IN-THE-GAPS] ${questions.length} campos de respuesta configurados`);
+
+    // 4. Funciones de Feedback Globales y Visuales (DEFINIDAS AL INICIO PARA EVITAR ERRORES)
+    window.FITG = window.FITG || {};
+
+    window.FITG.findParentContainer = (element) => {
+      if (!element) return null;
+      let pnode = element.parentNode.parentNode.parentNode;
+      while (pnode && pnode.getAttribute("id") == null) { pnode = pnode.parentNode; }
+      return pnode ? pnode.parentNode.parentNode : null;
+    };
+
+    window.FITG.getParentById = (id) => {
+      const el = document.getElementById(id);
+      return window.FITG.findParentContainer(el);
+    };
+
+    window.FITG.updateFeedback = (activityId, isCorrect) => {
+      // Encontrar el contenedor de la actividad
+      const initWidget = document.querySelector(`[id^="INITcouise"][data-activity-id="${activityId}"]`) || document.getElementById('INITcouise');
+      let activityContainer = document;
+
+      if (initWidget) {
+        let container = initWidget.parentNode;
+        for (let i = 0; i < 6; i++) { if (container.parentNode) container = container.parentNode; }
+        activityContainer = container;
       }
-      pnode = pnode.parentNode.parentNode;
-      return pnode;
-    }
-    function getTexte(name) {
-      var pnode = getParent(name);
-      if (pnode.querySelector("font") != null) {
-        var lastDiv = pnode.querySelector("font");
-      } else if (
-        pnode.querySelector(".genially-view-text").querySelector("div") != null
-      ) {
-        var lastDiv = pnode
-          .querySelector(".genially-view-text")
-          .querySelector("div");
+
+      const toggleGroupDisplay = (cls, show) => {
+        let elements = activityContainer.querySelectorAll("." + cls);
+        if (elements.length === 0) elements = document.querySelectorAll("." + cls);
+        elements.forEach(el => {
+          const p = window.FITG.findParentContainer(el);
+          if (p) p.style.display = show ? "block" : "none";
+        });
+      };
+
+      const toggleEl = (id, show) => {
+        const el = document.getElementById(id);
+        if (el) {
+          const p = window.FITG.getParentById(id);
+          if (p) p.style.display = show ? "block" : "none";
+        }
+      };
+
+      if (!isCorrect) {
+        // Caso INCORRECTO
+        toggleGroupDisplay("boncouise", false);
+        toggleGroupDisplay("erreurcouise", true);
+        toggleGroupDisplay("masquecouise", true);
+        toggleEl("erreurcouise", true);
+        toggleEl("boncouise", false);
+        toggleEl("masquecouise", true);
       } else {
-        var lastDiv = pnode.querySelector(".genially-view-text");
+        // Caso CORRECTO
+        toggleGroupDisplay("boncouise", true);
+        toggleGroupDisplay("erreurcouise", false);
+        toggleGroupDisplay("masquecouise", false);
+        toggleEl("boncouise", true);
+        toggleEl("erreurcouise", false);
+        toggleEl("masquecouise", false);
       }
-      return lastDiv;
-    }
-    if (document.getElementById("boncouise")) {
-      getParent("boncouise").style.display = "none";
-    }
-    if (document.getElementById("erreurcouise")) {
-      getParent("erreurcouise").style.display = "none";
-    }
-    var elt = document.querySelectorAll(".boncouise");
-    for (var i = 0; i < elt.length; i++) {
-      getParentElt(i).style.display = "none";
-    }
-    var elt = document.querySelectorAll(".erreurcouise");
-    for (var i = 0; i < elt.length; i++) {
-      getParentElt(i).style.display = "none";
-    }
-    var refparent =
-      document.getElementById("INITcouise").parentNode.parentNode.parentNode
-        .parentNode.parentNode.parentNode;
-    var refpage = refparent.getAttribute("id");
-    var stockage = "fois" + refpage;
-    var blocage = "bloc" + refpage;
-    var resultat = "faux" + refpage;
-    if (sessionStorage.getItem(blocage) != 1) {
-      sessionStorage.setItem(stockage, 0);
-    }
-    if (document.getElementById("tentativecouise")) {
-      getTexte("tentativecouise").innerHTML = sessionStorage.getItem(stockage);
-    }
-    if (sessionStorage.getItem(resultat) != null) {
-      var faux = sessionStorage.getItem(resultat);
+    };
 
-      if (faux == 1) {
-        var elt = document.querySelectorAll(".boncouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "none";
-        }
-        var elt = document.querySelectorAll(".erreurcouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "block";
-        }
-        var elt = document.querySelectorAll(".masquecouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "block";
-        }
-        if (document.getElementById("erreurcouise")) {
-          getParent("erreurcouise").style.display = "block";
-        }
-        if (document.getElementById("boncouise")) {
-          getParent("boncouise").style.display = "none";
-        }
-        if (document.getElementById("masquecouise")) {
-          getParent("masquecouise").style.display = "block";
-        }
+    window.FITG.resetVisuals = (actId) => {
+      const toggleGroupDisplay = (cls, show) => {
+        const elements = document.querySelectorAll("." + cls);
+        elements.forEach(el => {
+          const p = window.FITG.findParentContainer(el);
+          if (p) p.style.display = show ? "block" : "none";
+        });
+      };
+
+      const toggleEl = (id, show) => {
+        const p = window.FITG.getParentById(id);
+        if (p) p.style.display = show ? "block" : "none";
+      };
+
+      toggleGroupDisplay("boncouise", false);
+      toggleGroupDisplay("erreurcouise", false);
+      toggleGroupDisplay("masquecouise", false);
+      toggleEl("boncouise", false);
+      toggleEl("erreurcouise", false);
+      toggleEl("masquecouise", false);
+    };
+
+    // VISUALIZACIÓN
+    if (window.location.pathname.split('/')[1] !== 'editor') {
+      if (!persistEnabled) {
+        questions.forEach(q => { q.value = ""; q.setAttribute("value", ""); });
       } else {
-        var elt = document.querySelectorAll(".boncouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "block";
-        }
-        var elt = document.querySelectorAll(".erreurcouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "none";
-        }
-        var elt = document.querySelectorAll(".masquecouise");
-        for (var i = 0; i < elt.length; i++) {
-          getParentElt(i).style.display = "none";
-        }
-        if (document.getElementById("boncouise")) {
-          getParent("boncouise").style.display = "block";
-        }
-        if (document.getElementById("erreurcouise")) {
-          getParent("erreurcouise").style.display = "none";
-        }
-        if (document.getElementById("masquecouise")) {
-          getParent("masquecouise").style.display = "none";
+        questions.forEach(q => {
+          const savedVal = sessionStorage.getItem(q.id);
+          if (savedVal !== null) { q.value = savedVal; q.setAttribute("value", savedVal); }
+          else { q.value = ""; q.setAttribute("value", ""); }
+          q.addEventListener('input', (e) => { sessionStorage.setItem(q.id, e.target.value); window.lastInteractedActivity = activityId; });
+          q.addEventListener('focus', (e) => { window.lastInteractedActivity = activityId; });
+        });
+
+        const resultKey = createStorageKey("faux");
+        if (sessionStorage.getItem(resultKey) != null) {
+          const isFalse = sessionStorage.getItem(resultKey) == 1;
+          setTimeout(() => { if (window.FITG.updateFeedback) window.FITG.updateFeedback(activityId, !isFalse); }, 100);
         }
       }
+
+      // 6. Ocultar iniciales (Sólo en modo visualización para no estorbar editor)
+      const initialHideInfo = () => {
+        const hideId = (id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; };
+        hideId("INITcouise"); hideId("boncouise"); hideId("erreurcouise"); hideId("masquecouise");
+
+        const hideCls = (cls) => {
+          let els = activityContainer.querySelectorAll("." + cls);
+          if (els.length === 0) els = document.querySelectorAll("." + cls);
+          els.forEach(el => { const p = window.FITG.findParentContainer(el); if (p) p.style.display = "none"; });
+        };
+        hideCls("boncouise"); hideCls("erreurcouise"); hideCls("masquecouise");
+        if (document.getElementById("boncouise")) { const p = window.FITG.getParentById("boncouise"); if (p) p.style.display = "none"; }
+        if (document.getElementById("erreurcouise")) { const p = window.FITG.getParentById("erreurcouise"); if (p) p.style.display = "none"; }
+      };
+      initialHideInfo();
     }
-  }
+
+    // 7. Funciones de Feedback Visual (Chars) - Definidas globalmente
+    if (persistEnabled) {
+      window.showCharFeedback = (inputId, userVal, correctVal) => {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        window.removeCharFeedback(inputId);
+
+        const feedback = document.createElement('div');
+        feedback.id = `${inputId}-feedback`;
+        Object.assign(feedback.style, {
+          position: 'absolute', marginTop: '5px', padding: '4px 8px', background: '#fff',
+          border: '1px solid #e74c3c', borderRadius: '4px', zIndex: '10000', fontSize: '14px',
+          fontFamily: 'monospace', pointerEvents: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          whiteSpace: 'nowrap', color: '#333'
+        });
+
+        const rect = input.getBoundingClientRect();
+        document.body.appendChild(feedback);
+        feedback.style.top = `${rect.bottom + window.scrollY}px`;
+        feedback.style.left = `${rect.left + window.scrollX}px`;
+
+        const primaryCorrect = correctVal.split('|')[0];
+        let html = '';
+        const maxLen = Math.max(userVal.length, primaryCorrect.length);
+
+        for (let i = 0; i < maxLen; i++) {
+          const u = userVal[i] || '';
+          const c = primaryCorrect[i] || '';
+          if (u.toLowerCase() === c.toLowerCase()) html += `<span style="color:#27ae60; font-weight:bold">${u}</span>`;
+          else html += u ? `<span style="background:#fadbd8; color:#c0392b; text-decoration:line-through">${u}</span>` : `<span style="color:#ccc">_</span>`;
+        }
+        feedback.innerHTML = html;
+      };
+      window.removeCharFeedback = (inputId) => { const el = document.getElementById(`${inputId}-feedback`); if (el) el.remove(); };
+    }
+
+  })();
 </script>

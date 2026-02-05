@@ -1,0 +1,122 @@
+<div id="quiz-app" data-auteur="ocw"
+  style="text-align: center; background-color: yellow; width: 100%; height: 100%; font-weight: bold; padding: 10px; border: 2px solid black;">
+  Genially Quiz App</div>
+<script>
+  // Function to initialize the Quiz App
+  function initQuizApp() {
+    const successSound = new Audio('https://ocw-program.s3.amazonaws.com/sounds/short-success-sound.mp3');
+    const failureSound = new Audio('https://ocw-program.s3.amazonaws.com/sounds/failure-drum-sound-effect.mp3');
+
+    function getWrapper(el) {
+      return el.closest('.genially-animated-wrapper');
+    }
+
+    // Hide the script marker itself at runtime
+    var self = document.getElementById('quiz-app');
+    if (self) {
+      self.style.visibility = 'hidden';
+      self.style.pointerEvents = 'none';
+    }
+
+    // 1. Setup Logic
+    var successFeedback = document.querySelectorAll('.successFeedback');
+    var lives = document.querySelectorAll('.potenceX');
+    var penduPerdus = document.querySelectorAll('.penduPerdu');
+    var wrongAnswers = document.querySelectorAll('.wrongAnswer');
+    var correctAnswers = document.querySelectorAll('.correctAnswer');
+    var recommencerTodoBtn = document.querySelector('.recommencerTodo');
+
+    var livesUsed = 0;
+
+    // Initial State
+    successFeedback.forEach(f => { var w = getWrapper(f); if (w) w.style.display = 'none'; });
+    penduPerdus.forEach(p => { var w = getWrapper(p); if (w) w.style.display = 'none'; });
+
+    var recommencerTodo = null;
+    if (recommencerTodoBtn) {
+      recommencerTodo = getWrapper(recommencerTodoBtn);
+      if (recommencerTodo) recommencerTodo.style.display = 'none';
+    }
+
+    lives.forEach(l => { var w = getWrapper(l); if (w) w.style.display = 'block'; });
+
+    // 2. Interaction: Wrong Answer
+    wrongAnswers.forEach(wa => {
+      var wrapper = getWrapper(wa);
+      if (wrapper) {
+        wrapper.style.cursor = 'pointer';
+        wrapper.onclick = function () {
+          this.style.display = 'none';
+          failureSound.play();
+
+          if (livesUsed < lives.length) {
+            var liveW = getWrapper(lives[livesUsed]);
+            if (liveW) liveW.style.display = 'none';
+            livesUsed++;
+          }
+
+          if (livesUsed === lives.length) {
+            if (recommencerTodo) recommencerTodo.style.display = 'block';
+            penduPerdus.forEach(p => { var w = getWrapper(p); if (w) w.style.display = 'block'; });
+            correctAnswers.forEach(ca => { var w = getWrapper(ca); if (w) w.style.display = 'none'; });
+          }
+        };
+      }
+    });
+
+    // 3. Interaction: Correct Answer
+    correctAnswers.forEach(ca => {
+      var wrapper = getWrapper(ca);
+      if (wrapper) {
+        wrapper.style.cursor = 'pointer';
+        wrapper.onclick = function () {
+          successSound.play();
+          // Colorear todos los textos internos de verde
+          var texts = wrapper.querySelectorAll('span, p, div');
+          texts.forEach(t => { if (t.innerText.trim() !== "") t.style.color = '#78fc78'; });
+
+          successFeedback.forEach(f => { var w = getWrapper(f); if (w) w.style.display = 'block'; });
+        };
+      }
+    });
+
+    // 4. Interaction: Restart
+    if (recommencerTodo) {
+      recommencerTodo.onclick = function () {
+        recommencerTodo.style.display = 'none';
+        livesUsed = 0;
+        penduPerdus.forEach(p => { var w = getWrapper(p); if (w) w.style.display = 'none'; });
+        successFeedback.forEach(f => { var w = getWrapper(f); if (w) w.style.display = 'none'; });
+        lives.forEach(l => { var w = getWrapper(l); if (w) w.style.display = 'block'; });
+        wrongAnswers.forEach(wa => { var w = getWrapper(wa); if (w) w.style.display = 'block'; });
+        correctAnswers.forEach(ca => {
+          var w = getWrapper(ca);
+          if (w) {
+            w.style.display = 'block';
+            w.querySelectorAll('span, p, div').forEach(t => t.style.color = '');
+          }
+        });
+      };
+    }
+
+    return (correctAnswers.length > 0 || wrongAnswers.length > 0);
+  }
+
+  // Robust boot mechanism
+  function bootApp() {
+    // Check if the main container is ready
+    if (document.querySelector('.container-wrapper-genially')) {
+      let success = initQuizApp();
+      // If no elements found, it might be sliding pages, retry
+      if (!success) {
+        setTimeout(bootApp, 500);
+      }
+    } else {
+      // Wait for container
+      setTimeout(bootApp, 200);
+    }
+  }
+
+  // Start
+  bootApp();
+</script>

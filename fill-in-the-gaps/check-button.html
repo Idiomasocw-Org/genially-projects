@@ -1,234 +1,284 @@
-<script>
-	//-----VARIABLES UTILISATEUR----	
-	var solution = ["facilitating"]; //entrez vos réponses attendues
-	var ordre = 1; // 0 ou 1 - tapez 1 si l'ordre des réponses est important (si 0 : les champs réponses sont équivalents  )
-	var espace = 1; //0 ou 1 - tapez 1 si les réponses doivent être nettoyées des espaces de début et fin 
-	var casse = 0; // 0 ou 1 -  tapez 1 si la casse (majuscules/minuscules) doit être respectée
-	var correct=1; // 0 ou 1 - tapez 1 pour visualiser les erreurs (couleurs rouge / vert)
-	var tentative=0; // 0 ou 1 - tapez 1 pour afficher le nombre des tentatives
-	var maxtentative=0; // 0 pour illimité - tapez le nombre des tentatives maximales autorisées (tentative doit être à 1)
-	var unefois=0; //0 ou 1 - tapez 1 pour empêcher de recommencer lors d'une session (le couise sera bloqué) (tentative doit être à 1)
-			//------VARIABLES A NE PAS MODIFIER---
+<!-- BOTÓN VALIDAR V3.9 - HYBRID LOGIC & TRANSPARENCY & USER LOGIC -->
+<style>
+	html,
+	body {
+		margin: 0;
+		padding: 0;
+		background-color: transparent !important;
+		overflow: hidden;
+	}
 
-  // Function to get fill color of ellipse
-  function getEllipseFillColor() {
-    const svgElement = document.querySelector('.colorPicker[data-autor="ocw"] svg');
-    if (svgElement) {
-      const ellipseElement = svgElement.querySelector('ellipse.color1');
-      if (ellipseElement) {
-        return ellipseElement.getAttribute('fill');
-      }
-    }
-    return null; // Return null if the element or attribute is not found
-  }
-	
-	function getParentElt(nombre)
-	{
-		var pnode = elt[nombre].parentNode.parentNode.parentNode;
-		while (pnode.getAttribute('id') == null)
-		{
-			pnode = pnode.parentNode;
-		}
-		pnode = pnode.parentNode.parentNode;
-		return (pnode);
-	}		
-			
-			function getParent(name)
-	{
-		var pnode = document.getElementById(name).parentNode.parentNode.parentNode;
-		while (pnode.getAttribute('id') == null)
-		{
-			pnode = pnode.parentNode;
-		}
-		pnode = pnode.parentNode.parentNode;
-		return (pnode);
+	#BoutonValidation {
+		width: 100%;
+		height: 100%;
+		cursor: pointer;
+		background: transparent;
 	}
-function getTexte(name)
-	{
-		var pnode = getParent(name);
-		if (pnode.querySelector('font')!=null)
-		{
-		var lastDiv=pnode.querySelector('font');
-		}
-		else if (pnode.querySelector('.genially-view-text').querySelector('div')!=null) {
-		var lastDiv=pnode.querySelector('.genially-view-text').querySelector('div');
-		}
-		else 
-		{
-		var lastDiv=pnode.querySelector('.genially-view-text');
-		}
-		return lastDiv;
+</style>
+
+<div id="BoutonValidation"></div>
+
+<script>
+	//-----VARIABLES UTILISATEUR----    
+	var solution = ["test"]; // RELLENADO AUTOMATICAMENTE LUEGO
+	var ordre = 1; var espace = 1; var casse = 0; var correct = 1;
+	var tentative = 0; var maxtentative = 0; var unefois = 0;
+
+	// --- FUNCIONES EXTRA: COLOR FINDER (Mantiene tu funcionalidad de colores) ---
+	function extractColor(el) {
+		if (!el) return null;
+		var style = window.getComputedStyle(el);
+		var ignore = ['rgba(0, 0, 0, 0)', 'transparent', 'none', 'currentColor', 'inherit'];
+		var bg = style.backgroundColor;
+		if (bg && ignore.indexOf(bg) === -1) return bg;
+		var fill = el.getAttribute('fill') || style.fill;
+		if (fill && ignore.indexOf(fill) === -1) return fill;
+		return null;
 	}
-			var refparent=document.getElementById('INITcouise').parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-			var refpage=refparent.getAttribute('id');	
-			var stop='niet'+refpage;
-			if(sessionStorage.getItem(stop)!=null) {var niet = sessionStorage.getItem(stop);} else {var niet=0}
-			var question;
+
+	function extractRole(el) {
+		if (!el) return null;
+		var txt = (el.textContent || el.innerText || "").toLowerCase();
+		if (txt.indexOf('id-bien') !== -1 || txt.indexOf('id-correct') !== -1) return 'correct';
+		if (txt.indexOf('id-mal') !== -1 || txt.indexOf('id-incorrect') !== -1) return 'incorrect';
+		return null;
+	}
+
+	function getColorsFromGroup(initWidget, actId) {
+		var config = { correct: 'green', incorrect: 'red' }; // Colores por defecto
+		if (!initWidget) return config;
+
+		// Subir hasta encontrar el wrapper o el item
+		var container = initWidget;
+		var limit = 6;
+		while (container.parentNode && limit > 0 && !container.classList.contains('genially-view-item')) {
+			container = container.parentNode;
+			limit--;
+		}
+		if (!container.classList.contains('genially-view-item')) {
+			container = initWidget.parentNode.parentNode || initWidget.parentNode;
+		}
+
+		var allNodes = container.querySelectorAll('*');
+		for (var i = 0; i < allNodes.length; i++) {
+			var node = allNodes[i];
+			if (node.tagName === 'SCRIPT' || node === initWidget) continue;
+
+			var role = extractRole(node);
+			if (role) {
+				var col = extractColor(node);
+				// Ultra Finder: Si el nodo de texto es transparente, busca en sus hermanos/padre
+				if (!col) {
+					var p = node.parentNode;
+					var boxConfig = null;
+					var dist = 0;
+					while (p && dist < 4 && !p.classList.contains('genially-view-item')) { boxConfig = p; p = p.parentNode; dist++; }
+
+					if (boxConfig || p) {
+						var context = boxConfig || p;
+						var siblings = context.querySelectorAll('*');
+						for (var j = 0; j < siblings.length; j++) {
+							var sib = siblings[j];
+							if (sib === node || sib.contains(node)) continue;
+							var sibCol = extractColor(sib);
+							if (sibCol) { col = sibCol; break; }
+						}
+					}
+				}
+				if (col) config[role] = col;
+			}
+		}
+		return config;
+	}
+
+	function getParent(name) {
+		var el = document.getElementById(name);
+		if (!el) return null;
+		var pnode = el.parentNode.parentNode.parentNode;
+		while (pnode && pnode.getAttribute('id') == null) { pnode = pnode.parentNode; }
+		return pnode ? pnode.parentNode.parentNode : null;
+	}
+
+	// Función robusta para ocultar/mostrar elementos (compatible con tu script original)
+	function toggleDisplay(cls, displayVal) {
+		var els = document.querySelectorAll('.' + cls);
+		for (var i = 0; i < els.length; i++) {
+			var p = els[i];
+			var d = 0;
+			// Busca hacia arriba hasta encontrar el contenedor de item de Genially
+			while (p && !p.classList.contains('genially-view-item') && d < 10) { p = p.parentNode; d++; }
+			if (p) p.style.display = displayVal;
+		}
+	}
+
+	// --- LOGICA DE VALIDACIÓN ---
+	(function () {
+		var btn = document.getElementById('BoutonValidation');
+		btn.addEventListener('click', function (e) {
+			e.stopPropagation();
+
+			// 1. Detección de Actividad
+			var actId = window.lastInteractedActivity || window.currentActivityId;
+			if (!actId) {
+				var inp = document.querySelector('input.question');
+				if (inp) actId = inp.getAttribute('data-activity-id');
+			}
+			if (!actId) actId = "act1";
+
+			// 2. Extracción de Colores
+			var initWidget = document.querySelector(`[id^="INITcouise"][data-activity-id="${actId}"]`) || document.getElementById('INITcouise');
+			var cols = getColorsFromGroup(initWidget, actId);
+
+			// 3. Variables de Referencia (Copiadas de tu script original)
+			// Necesitamos un "refpage" para el storage. Usamos el INIT como ancla.
+			var refpage = "PAGE_DEFAULT";
+			if (initWidget) {
+				var refparent = initWidget;
+				var d = 0;
+				while (refparent.parentNode && d < 10) {
+					refparent = refparent.parentNode;
+					if (refparent.id && refparent.id.length > 5) { refpage = refparent.id; break; }
+					d++;
+				}
+			}
+
+			var stop = 'niet' + refpage + '_' + actId; // Unique per activity
+			var niet = sessionStorage.getItem(stop) ? parseInt(sessionStorage.getItem(stop)) : 0;
 			var reponse = [];
 			var faux = 0;
-			if  (document.getElementById('boncouise')){var BON = getParent('boncouise');}
-			if (document.getElementById('erreurcouise')){var PASBON = getParent('erreurcouise');}
-			if (document.getElementById('masquecouise')){var MASQUE = getParent('masquecouise');}
-			//--- DISPARITION FENETRE ----
-			setTimeout(function()
-			{
-				document.getElementsByClassName('icon-close')[0].click()
-			}, 10);
-			document.getElementById('genially-view-modal').style.visibility = "hidden";
-			//--- RECUPERATION DES REPONSES
-			for (var i = 1; i < solution.length + 1; i++)
-			{
-				question = "q" + i;
-				reponse[i - 1] = document.getElementById(question).value;
-				if (espace==1) {reponse[i-1]=reponse[i-1].trim()}
-			}
-			//--- SAUVEGARDE et AFFICHAGE DES TENTATIVES	
-			if (tentative == 1)
-			{
-			var refparent=document.getElementById('INITcouise').parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-			var refpage=refparent.getAttribute('id');
-			var stockage='fois'+refpage;
-			var resultat='faux'+refpage;
-			if (sessionStorage.getItem(stockage)==null){sessionStorage.setItem(stockage,0);}
-			var fois=parseInt(sessionStorage.getItem(stockage),10);
-			
-			if (((maxtentative!=0)&&(fois<maxtentative)&&(niet!=1))||((maxtentative==0)&&(niet!=1)))
-			{
-			fois=fois+1;
-			getTexte('tentativecouise').innerHTML=fois;
-			sessionStorage.setItem(stockage,fois)
-			}
-			else 
-			{
-			var niet=1;
-			}
-			
-			if (unefois == 1)
-			{
-			var blocage='bloc'+refpage;
-			sessionStorage.setItem(blocage,unefois);
-						}
-			}
-			//--- SI niet (nombre max de tentatives pas atteint) PAS A 1 , ON TRAITE LA SUITE 
-			if (niet==0)
-			{
-			
-			//--- SI PAS RESPECT DE LA CASSE ON MET TOUT EN MAJUSCULE	
-			if (casse != 1)
-			{
-				for (var b = 0; b < solution.length; b++)
-				{
-					reponse[b] = reponse[b].toUpperCase();
-					solution[b] = solution[b].toUpperCase();
-				}
-			}
-			//--- SI ORDRE QUESTION-REPONSE PAS UTILE ON NE TRIE PLUS LES TABLEAUX 	MAIS ON FAIT UN TRUC COMPLIQUE QUI MARCHE PAR MIRACLE
-			if (ordre != 1)
-			{	
-				for (var a = 0; a < reponse.length; a++)
-			{
-				var b=a+1; question = "q" + b;
-								
-				var correspondance=0; var vert=0;
-				
-				for (var i = 0; i < solution.length; i++)
-				{
-				var alternative = solution[i].split('|');
-				for (var x = 0; x < alternative.length; x++)
-				{
-				if (reponse[a] === alternative[x]){correspondance=1;} 
-				}
-					
-				if (correspondance==0)
-				
-				{
-				if((correct==1)&&(vert!=1)){document.getElementById(question).style.color='red';}
-				console.log("a="+a+" "+reponse[a]+question+" "+enleve+" i="+i+" "+solution+" x="+x+" faux="+faux+" vert="+vert);
-				}
-				else
-				{
-				if((correct==1)&&(vert!=1)){document.getElementById(question).style.color='green'; }	
-				var enleve=solution.splice(i,1);
-				console.log("a="+a+" "+reponse[a]+question+" "+enleve+" i="+i+" "+solution+" x="+x+" faux="+faux+" vert="+vert);
-				vert=1;break;
-				}
-				}
-			}
-			if (solution.length!=0){faux = 1;};
-			}
-					
-			
-			//--- ON TESTE CHAQUE ENTREE DU TABLEAU - SI PAS EQUIVALENT ON MET 'FAUX' A 1 - TOUJOURS VRAI MAIS SI ORDRE A 1
-			
-			else{
-			for (var a = 0; a < solution.length; a++)
-			{
-				var b=a+1; question = "q" + b;
-				
-				var correspondance=0;
-				var alternative = solution[a].split('|');
-				for (var x = 0; x < alternative.length; x++)
-				{
-				if (reponse[a] === alternative[x]){correspondance=1;}
-				}
-					
-				if (correspondance==0)
-				
-				{
-				faux = 1;
-				if(correct==1){document.getElementById(question).style.color='red'}
-				}
-				else
-				{
-				if(correct==1){document.getElementById(question).style.color=ellipseFillColor}			
-				}
-			}
-			}
-			//--- SI FAUX =1 ALORS ON AFFICHE L'OBJET ERREUR- SINON MESSAGE OK	
-			if (unefois == 1)
-		{
-		sessionStorage.setItem(resultat,faux);
-		}
-			
-			if (faux == 1)
-			{
-				var elt=document.querySelectorAll('.boncouise');
-					for (var i=0;i<elt.length;i++)
-					{getParentElt(i).style.display="none";}
-				var elt=document.querySelectorAll('.erreurcouise');
-					for (var i=0;i<elt.length;i++)
-					{getParentElt(i).style.display="block";}
-				var elt=document.querySelectorAll('.masquecouise');
-					for (var i=0;i<elt.length;i++)
-					{getParentElt(i).style.display="block";}
-				if (document.getElementById('erreurcouise')){PASBON.style.display = "block";}
-				if (document.getElementById('boncouise')){BON.style.display = "none";}
-				if (document.getElementById('masquecouise')){MASQUE.style.display = "block"}
-			}
-			else
-			{
-				var elt=document.querySelectorAll('.boncouise');
-					for (var i=0;i<elt.length;i++)
-					{getParentElt(i).style.display="block";}
-				var elt=document.querySelectorAll('.erreurcouise');
-					for (var i=0;i<elt.length;i++)
-					{getParentElt(i).style.display="none";}
-				var elt=document.querySelectorAll('.masquecouise');
-					for (var i=0;i<elt.length;i++)
-					{getParentElt(i).style.display="none";}
-					if (document.getElementById('boncouise')){BON.style.display = "block";}
-				if (document.getElementById('erreurcouise')){PASBON.style.display = "none";}
-				if (document.getElementById('masquecouise')){MASQUE.style.display = "none";}
-				
-				if (unefois==1)
-				{
-				var refparent=document.getElementById('INITcouise').parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-				var refpage=refparent.getAttribute('id');
-				var stop='niet'+refpage;
-				sessionStorage.setItem(stop,1);
-				}
-			}
-			}
-			
 
+			// Reset Visuals
+			toggleDisplay('boncouise', 'none');
+			toggleDisplay('erreurcouise', 'none');
+			toggleDisplay('masquecouise', 'none');
+			if (document.getElementById('boncouise')) { var p = getParent('boncouise'); if (p) p.style.display = "none"; }
+			if (document.getElementById('erreurcouise')) { var p = getParent('erreurcouise'); if (p) p.style.display = "none"; }
+			if (document.getElementById('masquecouise')) { var p = getParent('masquecouise'); if (p) p.style.display = "none"; }
+
+			// Recoger respuestas
+			// Asumimos que solution ya tiene la longitud correcta o nos basamos en inputs
+			// Mapeamos inputs usando actId
+			for (var i = 1; i <= solution.length; i++) {
+				var el = document.getElementById(actId + '_resp' + i) || document.getElementById('q' + i);
+				var val = el ? el.value : "";
+				if (espace == 1) val = val.trim();
+				reponse.push(val);
+				if (el) el.style.color = ''; // Reset color
+			}
+
+			// Tentativas
+			if (tentative == 1) {
+				var stockage = 'fois' + refpage + '_' + actId;
+				if (!sessionStorage.getItem(stockage)) sessionStorage.setItem(stockage, 0);
+				var fois = parseInt(sessionStorage.getItem(stockage), 10);
+
+				if (((maxtentative != 0) && (fois < maxtentative) && (niet != 1)) || ((maxtentative == 0) && (niet != 1))) {
+					fois++;
+					// Si existe el contador de tentativas, actualizalo
+					var tentEl = document.getElementById('tentativecouise'); // O usar clase
+					if (tentEl && tentEl.querySelector && tentEl.querySelector('.genially-view-text')) {
+						tentEl.querySelector('.genially-view-text').innerHTML = fois;
+					}
+					sessionStorage.setItem(stockage, fois);
+				} else {
+					niet = 1;
+				}
+
+				if (unefois == 1) {
+					// lógica un solo uso
+					var blocage = 'bloc' + refpage + '_' + actId;
+					sessionStorage.setItem(blocage, unefois);
+				}
+			}
+
+			if (niet == 0) {
+				// --- CORE VALIDATION LOGIC (Adapted from original) ---
+				if (casse != 1) {
+					for (var b = 0; b < solution.length; b++) {
+						reponse[b] = reponse[b].toUpperCase();
+					}
+					// No mutar solution original pues afecta reintentos, usar copia
+					var solCopy = solution.map(s => s.toUpperCase());
+				} else {
+					var solCopy = [...solution];
+				}
+
+				if (ordre != 1) {
+					// Sin orden
+					// Clonamos array respuestas usadas para no repetir
+					var repUsadas = new Array(reponse.length).fill(false);
+					var inputsCorrectos = new Array(reponse.length).fill(false);
+
+					// Simple check: Ver si cada respuesta encaja en alguna solucion disponible
+					// Nota: El original tiene "match and splice". 
+					var solDisponibles = [...solCopy];
+
+					for (var a = 0; a < reponse.length; a++) {
+						var b = a + 1;
+						var el = document.getElementById(actId + '_resp' + b) || document.getElementById('q' + b);
+						var userVal = reponse[a];
+						var found = false;
+
+						for (var k = 0; k < solDisponibles.length; k++) {
+							var alts = solDisponibles[k].split('|');
+							if (alts.includes(userVal)) {
+								found = true;
+								solDisponibles.splice(k, 1);
+								break;
+							}
+						}
+
+						if (!found) {
+							faux = 1;
+							if (correct == 1 && el) {
+								el.style.color = cols.incorrect; // OUR COLOR
+								// Feedback char removed for simplicity/compat unless requested
+							}
+						} else {
+							if (correct == 1 && el) el.style.color = cols.correct; // OUR COLOR
+						}
+					}
+					if (solDisponibles.length > 0) faux = 1; // Faltan inputs
+				} else {
+					// Con orden
+					for (var a = 0; a < solCopy.length; a++) {
+						var b = a + 1;
+						var el = document.getElementById(actId + '_resp' + b) || document.getElementById('q' + b);
+						var uVal = reponse[a];
+						var alts = solCopy[a].split('|');
+						var isRight = alts.includes(uVal);
+
+						if (!isRight) {
+							faux = 1;
+							if (correct == 1 && el) {
+								el.style.color = cols.incorrect;
+								if (window.showCharFeedback) window.showCharFeedback(el.id, reponse[a], solution[a]);
+							}
+						} else {
+							if (correct == 1 && el) {
+								el.style.color = cols.correct;
+								if (window.removeCharFeedback) window.removeCharFeedback(el.id);
+							}
+						}
+					}
+				}
+
+				// Final Visuals
+				setTimeout(function () {
+					if (faux == 1) {
+						toggleDisplay('erreurcouise', 'block');
+						toggleDisplay('masquecouise', 'block');
+						if (document.getElementById('erreurcouise')) { var p = getParent('erreurcouise'); if (p) p.style.display = "block"; }
+						if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, false);
+					} else {
+						toggleDisplay('boncouise', 'block');
+						if (document.getElementById('boncouise')) { var p = getParent('boncouise'); if (p) p.style.display = "block"; }
+						if (window.FITG && window.FITG.updateFeedback) window.FITG.updateFeedback(actId, true);
+
+						if (unefois == 1) sessionStorage.setItem(stop, 1);
+					}
+				}, 100);
+			}
+		});
+	})();
 </script>
